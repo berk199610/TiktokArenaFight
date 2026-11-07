@@ -3,7 +3,7 @@
 
 const FIRST = ['ahmet', 'mehmet', 'ayse', 'fatma', 'zeynep', 'emre', 'burak', 'elif', 'deniz', 'cem', 'selin', 'berk', 'ece', 'mert', 'irem', 'kaan', 'naz', 'efe', 'derin', 'arda'];
 const TAIL = ['34', '06', '35', '_tr', '.x', '_01', '07', '_kral', '.official', '61', '42', '_gs', '_fb', '16'];
-const TIERS = [1, 5, 30, 100, 300, 1000, 5000];
+const TIERS = [1, 5, 30, 100, 300, 1000, 2500, 5000];
 
 export class Simulator {
   constructor(emit) {

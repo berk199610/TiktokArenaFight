@@ -1,11 +1,12 @@
 @echo off
+setlocal
 chcp 65001 >nul
 title Arena Dovusu - Baslatici
 cd /d "%~dp0"
 
 rem ---- Node.js: once projedeki tasinabilir surum, yoksa bilgisayardaki
-set "NODE=tools\node\node.exe"
-set "NPM=tools\node\npm.cmd"
+set "NODE=%~dp0tools\node\node.exe"
+set "NPM=%~dp0tools\node\npm.cmd"
 if not exist "%NODE%" (
   where node >nul 2>nul && (set "NODE=node" & set "NPM=npm") || (
     echo [HATA] Node.js bulunamadi. tools\node klasorunu indirin ya da https://nodejs.org adresinden kurun.
@@ -15,16 +16,32 @@ if not exist "%NODE%" (
 )
 
 rem ---- Kopru bagimliliklari (ilk calistirmada bir kez)
-if not exist "bridge\node_modules\ws" (
+set "ARENA_INSTALL=0"
+if not exist "bridge\node_modules\ws" set "ARENA_INSTALL=1"
+if not exist "bridge\node_modules\tiktok-live-connector" set "ARENA_INSTALL=1"
+if "%ARENA_INSTALL%"=="1" (
   echo Kopru paketleri kuruluyor...
   pushd bridge
-  call "..\%NPM%" install --no-audit --no-fund
+  if "%NPM%"=="npm" (
+    call npm install --no-audit --no-fund
+  ) else (
+    call "%NPM%" install --no-audit --no-fund
+  )
+  if errorlevel 1 (
+    popd
+    echo [HATA] Kopru paketleri kurulamadi.
+    pause
+    exit /b 1
+  )
   popd
 )
 
 rem ---- 1) Kopru (TikTok / simulator -> oyun)
-start "Kopru - kapatma" cmd /k ""%NODE%" bridge\src\server.js"
-timeout /t 2 /nobreak >nul
+"%NODE%" bridge\src\ensure-running.js
+if errorlevel 1 (
+  pause
+  exit /b 1
+)
 
 rem ---- 2) Yayinci paneli (tarayicida)
 start "" "http://localhost:8788"

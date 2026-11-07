@@ -4,6 +4,33 @@ TikTok izleyicileri yorum, beğeni ya da hediyeyle arenaya karakter olarak girer
 dövüşür, son kalan turu kazanır. Kurallar: [`docs/Arena-Dovusu-Tasarim.pdf`](docs/Arena-Dovusu-Tasarim.pdf)
 (metin hâli: [`docs/DESIGN.md`](docs/DESIGN.md)). Uygulamadaki kararlar: [`docs/TASARIM-NOTLARI.md`](docs/TASARIM-NOTLARI.md).
 
+## Güncel düzen — 7 Kasım 2026
+
+Bu bölüm Berk'in son isteğini anlatır; aşağıdaki eski aşama notlarında kıyafet, skor tablosu, kamera ve ölüm
+beklemesiyle ilgili farklı bilgiler varsa bu bölüm geçerlidir.
+
+- **Kaynak proje:** `C:\Projeler\TiktokArenaFight\game`. Masaüstündeki
+  `C:\Users\admin\OneDrive\Desktop\TiktokLive\TikTokLiveArenaFight` klasörü çalıştırılabilir oyun kopyasıdır;
+  Unity'de düzenlenecek kaynak proje değildir. Kaynak derleme çıktısı `C:\Projeler\TiktokArenaFight\Builds\Windows` altındadır.
+- **Sade başlangıç:** herkes aynı basit gri başlangıç modeliyle girer. Rastgele şapka, pelerin ve süslü kostüm verilmez.
+  Karakterin malzemeleri projenin URP malzemelerine çevrilir. Ayaklardaki pembe çizimin asıl nedeni olan
+  duvar arkası efektinin (`M_XRay`) kopuk shader bağlantısı da onarılır.
+- **Kıyafet gelişimi:** mevcut eşikler korunur. Beğeni/yorum için üç destek seviyesi vardır:
+  20/100/300 beğeni **veya** 3/10/25 yorum. Hediye seviyeleri yayın boyunca biriken 1/30/300/1.000/5.000 coin ile açılır.
+  Önce bileklik, sonra omuzluk/kemer ve zırh, üst seviyelerde tek bir kısa pelerin belirir; renkler de değişir.
+  İlk üç sıradakiler küçük altın/gümüş/bronz madalya taşır. Bunlar görünüm değişikliğidir; savaş gücünü değiştirmez.
+- **Sahne içi TOP 5:** metal çerçeveli tablo tribünde sabit durur ve yüzünü kameraya döner. Kamera kayınca gerçek
+  konumu değişmez. Duvar ve taşlarla normal sahne derinliğini paylaşır; ekrana yapışık bir katman değildir.
+- **Üç küçük tribün panosu:** kalp +1/yorum +5; 100+ coin hediye → tam can ve hediye → geri dönüş;
+  ayrıca köşede sekiz hediye kademesini hareket simgeleriyle gösteren pano. Uzun İngilizce açıklamalar yoktur.
+  Eski büyük ekran üstü hediye listesi gizlidir.
+- **Ölümden dönüş:** yerde küçük mezar taşı ve dolan bir çubuk görünür. Hediye atmayan oyuncu **60 saniyeden önce**
+  dönmez; süre bitince hazırlık/savaş aşamasında giriş uygunsa ve yer varsa kendiliğinden geri gelir, yer yoksa sıraya girer.
+  Yorum/beğeni süreyi atlatmaz. Hazırlık ve savaşta hediye hemen döndürür. Son savaş/kazanan ekranında ölü veya
+  henüz girmemiş oyuncunun hediyesi sonraki hazırlığa saklanır; mevcut tur kuralı korunur.
+- **Kamera:** normal görünüm biraz daha uzaktır. Takip ve yaklaşma/uzaklaşma yumuşaktır; büyük hediyeler çok küçük,
+  kısa bir yakınlaşma ekler. Ani kesme ve sarsıntı yoktur.
+
 ## Hızlı başlangıç
 
 ### Unity'de açıp oynamak
@@ -29,7 +56,15 @@ dövüşür, son kalan turu kazanır. Kurallar: [`docs/Arena-Dovusu-Tasarim.pdf`
 `BASLAT.bat`'a çift tıkla: köprüyü başlatır (port **8788**), yayıncı panelini tarayıcıda açar
 (`http://localhost:8788`), derlenmiş oyunu açar. Panelden: tek izleyici olarak yorum/beğeni/7 hediye,
 kalabalık botu kaydırıcıları, duraklat, turu bitir, skor tablosunu sıfırla, tüm kayıtları sil, kullanıcıyı çıkar.
-TikTok bağlantısı (Aşama 5) henüz yok: `bridge/src/tiktok.js`.
+
+### Gerçek TikTok LIVE hediyelerini oyuna bağlamak
+1. `BASLAT.bat` ile köprü, panel ve oyunu aç. Oyun/panel durumunda **Oyun bağlı** yazısını gör.
+2. TikTok hesabında LIVE yayınını başlat. LIVE Studio görüntü yakalamayı ayrıca yapar; hediye köprüsü için oyunla aynı bilgisayarda köprü çalışır durumda kalmalı.
+3. Panelde **TikTok LIVE bağlantısı** alanına hesabın kullanıcı adını yazıp **TikTok LIVE'a bağlan** düğmesine bas.
+4. Panelde kaynak TikTok, durum bağlı olduğunda hediyeler oyuna gelir. Önce yayına çıkmadan paneldeki sahte hediye düğmeleriyle hareketleri dene.
+5. Gerçek yayında bağlantı kurulmazsa köprü penceresindeki durum/hata mesajına bak; hesap o anda LIVE'da olmalı.
+
+TikTok olaylarını okuyan `tiktok-live-connector` paketi resmî TikTok API'si değildir; TikTok tarafındaki değişiklikler bağlantıyı bozabilir. Gerçek LIVE bağlantısı her hesap/ağ koşulunda garanti edilmez. Köprüdeki `Simülatöre dön` düğmesi yerel test kaynağına geri geçirir.
 
 ### Unity'de "Scale" ayarı
 Game penceresindeki **Scale** kaydırıcısı sadece önizlemenin yakınlığıdır, oyunu değiştirmez. 1080x1920 dikey ekran
@@ -53,6 +88,9 @@ Tüm sayılar `game/Assets/StreamingAssets/config.json` içinde (derlenmiş oyun
 `camera.pitchDeg` (eğim), `camera.minDistance/maxDistance` (uzaklık), `board.rows` (skor tablosu satırı).
 
 ## Ne var (Aşama 1–4 büyük ölçüde)
+Bu ve sonraki "2. tur geliştirmeleri" bölümü önceki aşamaların dökümüdür. Son görünüm ve dönüş kuralları için
+yukarıdaki **Güncel düzen** bölümünü esas alın.
+
 - **Arena**: gladyatör arena modeli, 12 m'lik dövüş çemberi, solda ve sağda kemerli + meşaleli kapı,
   sıcak ışık, karanlık arka plan.
 - **Kamera**: köşeden ~42° eğik 2.5D; herkesin x/z ortalamasını 1,5 sn'de yumuşakça takip eder, merkezden en fazla
@@ -107,7 +145,7 @@ Tüm sayılar `game/Assets/StreamingAssets/config.json` içinde (derlenmiş oyun
 - Ekrandaki her şey basit İngilizce + ikon.
 
 ## Eksikler / sonraki adımlar
-- Aşama 5: TikTok LIVE bağlantısı (`bridge/src/tiktok.js`) ve az izleyicili deneme yayınları.
+- Aşama 5: TikTok LIVE bağlantısı panelden başlatılabilir; gerçek hesapta deneme yayını ve hediye seri sayımının doğrulanması gerekiyor.
 - Ses yok.
 - Kostüm aksesuarları basit şekillerden; istenirse gerçek model parçalarıyla değiştirilebilir.
 - 100 karakterde FPS henüz TikTok LIVE Studio yayınıyla birlikte ölçülmedi (60+ karakterle tek başına 60 FPS).
@@ -138,6 +176,16 @@ Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -gallery -s
 Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -gifts -shots C:/Projeler/TiktokArenaFight/_test-output/gifts
 ```
 Unity editörü projeyi açıkken batch komutları çalışmaz (proje kilidi) — önce editörü kapatın.
+
+### Testleri canlı kayıtlardan ayırmak
+
+- `-test-data <klasör>`: otomatik test kayıtlarını ayrı klasöre yazar; yayıncının normal oyuncu kayıtlarına dokunmaz.
+- `-bridge-url <ws-adresi>`: test oyununu ayrı test köprüsüne bağlar. Canlı yayının `8788` köprüsüyle karıştırmayın.
+- `-review -shots <klasör>`: başlangıç kıyafeti, destek/hediye seviyeleri, malzemeler, sabit tablo, mezar taşı,
+  60 saniyelik dönüş ve hediyeyle erken dönüş için senaryo çalıştırır. Köprü kontrolü için ayrı test köprüsünden
+  `BridgeReview` adlı test oyuncusuna bir kez 30 coinlik hediye gönderilmesi gerekir. Sonuç `[Review]` satırlarına yazılır.
+
+Bu seçenekler test imkânını tarif eder; tamamlanan kontroller ve gerçek LIVE denemesi ayrıca doğrulama raporunda belirtilir.
 
 ## Lisanslar
 - Quaternius Universal Animation Library 1 ve 2: CC0.

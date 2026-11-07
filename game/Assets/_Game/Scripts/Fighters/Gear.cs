@@ -1,17 +1,17 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Arena
 {
-    /// <summary>
-    /// Visible progression (user request): gifters get dressed by how much they sent this stream (tiara -> gold
-    /// armour -> royal cape + crown -> purple king cape -> wings + halo); comment / like supporters level up too
-    /// (wristbands -> shoulder pads + belt -> hero cape + star badge). Every step up pops in with a light pillar,
-    /// sparkles and a "LEVEL UP!" / "VIP!" word so the viewer sees it happen.
-    /// </summary>
+    /// <summary>Plain starter clothes, then readable support / gift stages. All changes are cosmetic.</summary>
     public static class Gear
     {
         static GameConfig Cfg => GameConfig.Current;
+        static readonly Color Slate = new Color(0.26f, 0.32f, 0.38f);
+        static readonly Color Blue = new Color(0.16f, 0.46f, 0.72f);
+        static readonly Color Gold = new Color(1f, 0.74f, 0.22f);
+        static readonly Color Silver = new Color(0.66f, 0.79f, 0.86f);
+        static readonly Color Bronze = new Color(0.69f, 0.40f, 0.20f);
+        static readonly Color Skin = new Color(0.98f, 0.82f, 0.66f);
 
         public static int SupportLevel(Viewer v)
         {
@@ -27,51 +27,84 @@ namespace Arena
         {
             if (v == null || v.isBot) return 0;
             var t = Cfg.levels.giftCoins;
-            int lvl = 0;
-            for (int i = 0; i < t.Length; i++) if (v.streamCoins >= t[i]) lvl = i + 1;
-            return lvl;
+            int level = 0;
+            for (int i = 0; i < t.Length; i++) if (v.streamCoins >= t[i]) level = i + 1;
+            return level;
         }
 
-        /// <summary>After an interaction: dress the fighter up if a level was reached, with the level-up show.</summary>
+        /// <summary>
+        /// Resolve imported material slots once. Runtime clothing never inherits an embedded FBX shader or
+        /// its bright palette accents: skin and cloth both use the project's authored URP base material.
+        /// </summary>
+        public static void PrepareBase(FighterRig rig, Transform model)
+        {
+            foreach (var renderer in model.GetComponentsInChildren<Renderer>(true))
+            {
+                var materials = renderer.sharedMaterials;
+                var skin = new bool[materials.Length];
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    var source = materials[i];
+                    skin[i] = source != null && source.name.IndexOf("skin", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (source == null || source.shader == null || !source.shader.isSupported)
+                        Debug.LogWarning("[Arena] Replacing missing/unsupported fighter material on " + renderer.name + " slot " + i);
+                    materials[i] = Mats.Lit(skin[i] ? Skin : Slate);
+                }
+                renderer.sharedMaterials = materials;
+                rig.outfitRenderers.Add(renderer);
+                rig.outfitMaterials.Add(materials);
+                rig.outfitSkinSlots.Add(skin);
+            }
+        }
+
+        static void DressBase(Fighter f, int support, int gift)
+        {
+            Color color = support >= 3 ? new Color(0.10f, 0.49f, 0.62f) : support >= 2 ? Blue
+                : support >= 1 ? new Color(0.27f, 0.43f, 0.54f) : Slate;
+            if (gift == 1) color = new Color(0.47f, 0.32f, 0.22f);
+            else if (gift == 2) color = new Color(0.17f, 0.39f, 0.47f);
+            else if (gift == 3) color = new Color(0.62f, 0.39f, 0.12f);
+            else if (gift == 4) color = new Color(0.27f, 0.16f, 0.45f);
+            else if (gift >= 5) color = new Color(0.80f, 0.84f, 0.87f);
+            var cloth = Mats.Lit(color);
+            var skin = Mats.Lit(Skin);
+            for (int i = 0; i < f.rig.outfitRenderers.Count; i++)
+            {
+                var materials = f.rig.outfitMaterials[i];
+                var slots = f.rig.outfitSkinSlots[i];
+                for (int j = 0; j < materials.Length; j++) materials[j] = slots[j] ? skin : cloth;
+                f.rig.outfitRenderers[i].sharedMaterials = materials;
+            }
+        }
+
         public static void CheckLevelUp(Viewer v)
         {
             var f = v?.fighter;
             if (f == null || !f.IsAlive) return;
             int s = SupportLevel(v), g = GiftLevel(v);
-            if (s > f.gearSupport || g > f.gearGift)
-            {
-                bool giftUp = g > f.gearGift;
-                Apply(f, true);
-                Celebrate(f, giftUp, giftUp ? g : s);
-            }
+            if (s <= f.gearSupport && g <= f.gearGift) return;
+            bool giftUp = g > f.gearGift;
+            Apply(f, true);
+            var color = giftUp ? Gold : Blue;
+            Fx.I.GroundRing(f.Pos, 0.35f, 1.2f, 0.65f, color);
+            Fx.I.Sparkle(f.Pos, color, 10, 0.5f, 1.8f);
+            Fx.I.Word(f.transform.position + Vector3.up * (f.HeadHeight + 0.35f), giftUp ? "VIP UP!" : "LEVEL UP!", color, 0.9f);
         }
 
-        static void Celebrate(Fighter f, bool gift, int level)
-        {
-            var col = gift ? new Color(1f, 0.82f, 0.25f, 1f) : new Color(0.4f, 0.8f, 1f, 1f);
-            Fx.I.LightPillar(f.Pos, col, 0.9f);
-            Fx.I.Sparkle(f.Pos, col, 18, 0.7f, 2.2f);
-            string word = gift ? (level >= 5 ? "LEGEND!" : level >= 4 ? "KING!" : level >= 3 ? "ROYAL!" : "VIP!") : "LEVEL UP!";
-            Fx.I.Word(f.transform.position + Vector3.up * (f.HeadHeight + 0.6f), word, col, 1.25f);
-            GameManager.I.Emotes?.Show(f, gift ? "starstruck" : "happy", true);
-        }
-
-        /// <summary>Rebuild the fighter's gear for its viewer's current levels.</summary>
         public static void Apply(Fighter f, bool animate)
         {
-            foreach (var go in f.gearParts) if (go != null) Object.Destroy(go);
+            foreach (var part in f.gearParts)
+                if (part != null) { part.SetActive(false); Object.Destroy(part); }
             f.gearParts.Clear();
-            var v = f.viewer;
-            int s = SupportLevel(v), g = GiftLevel(v);
+            int s = SupportLevel(f.viewer), g = GiftLevel(f.viewer);
             int oldS = Mathf.Max(0, f.gearSupport), oldG = Mathf.Max(0, f.gearGift);
-            f.gearSupport = s;
-            f.gearGift = g;
+            f.gearSupport = s; f.gearGift = g;
+            DressBase(f, s, g);
             if (s == 0 && g == 0) return;
             var rig = f.rig;
             var i = rig.info;
-            var body = f.body;
-            float h = i.height, R = i.headR;
-            var gold = Mats.Metal(new Color(1f, 0.78f, 0.25f));
+            float h = i.height;
+            var metal = Mats.Metal(g >= 3 ? Gold : g >= 2 ? Silver : g >= 1 ? Bronze : Blue);
 
             void Add(Transform holder, bool isNew)
             {
@@ -80,95 +113,86 @@ namespace Arena
                 if (animate && isNew) holder.gameObject.AddComponent<PopIn>();
             }
 
-            // ---------------- supporters (comments / likes)
-            if (s >= 1)
+            // First earned detail: two small cuffs. Gifts use copper; support uses blue.
+            void Cuff(Transform hand)
             {
-                foreach (var hand in new[] { rig.handL, rig.handR })
-                {
-                    if (hand == null) continue;
-                    var holder = Accessories.Holder("Wristband", body, body.InverseTransformPoint(hand.position), hand);
-                    MeshKit.Part("Band", MeshKit.Torus(1f, 0.35f), Mats.Emissive(new Color(0.3f, 0.85f, 1f), 1.6f), holder, Vector3.zero, new Vector3(0, 0, 90), Vector3.one * h * 0.045f);
-                    Add(holder, oldS < 1);
-                }
+                if (hand == null) return;
+                var holder = Accessories.Holder("EarnedCuff", f.body, f.body.InverseTransformPoint(hand.position), hand);
+                MeshKit.Part("Cuff", MeshKit.Torus(1f, 0.28f), metal, holder, Vector3.zero,
+                    new Vector3(0, 0, 90), Vector3.one * h * 0.038f);
+                Add(holder, (s > oldS || g > oldG) && oldS == 0 && oldG == 0);
             }
-            if (s >= 2 && g < 4)
+            Cuff(rig.handL); Cuff(rig.handR);
+
+            if (s >= 2 || g >= 2)
             {
-                var holder = Accessories.Holder("ShoulderPads", body, i.chest + Vector3.up * h * 0.02f, rig.chest);
-                var blue = Mats.Metal(new Color(0.25f, 0.55f, 1f));
-                MeshKit.Part("PadL", MeshKit.Sphere, blue, holder, new Vector3(-i.chestHalfW * 1.25f, 0, 0), Vector3.zero, new Vector3(h * 0.1f, h * 0.06f, h * 0.1f));
-                MeshKit.Part("PadR", MeshKit.Sphere, blue, holder, new Vector3(i.chestHalfW * 1.25f, 0, 0), Vector3.zero, new Vector3(h * 0.1f, h * 0.06f, h * 0.1f));
-                Add(holder, oldS < 2);
-                var belt = Accessories.Holder("HeroBelt", body, i.hips + Vector3.up * h * 0.02f, rig.hips);
-                MeshKit.Part("Belt", MeshKit.Cylinder, blue, belt, Vector3.zero, Vector3.zero, new Vector3(i.waistR * 2.3f, h * 0.025f, i.waistR * 2.3f));
-                Add(belt, oldS < 2);
-            }
-            if (s >= 3 && g < 3)
-            {
-                var cape = Accessories.Holder("HeroCape", body, new Vector3(i.chest.x, i.chest.y + h * 0.05f, i.chestBackZ - 0.035f), rig.chest);
-                MeshKit.Part("Cape", MeshKit.Cube, Mats.Lit(new Color(0.15f, 0.45f, 1f)), cape, new Vector3(0, -h * 0.2f, -0.03f), new Vector3(10, 0, 0), new Vector3(i.chestHalfW * 2.6f, h * 0.44f, 0.022f));
-                MeshKit.Part("Trim", MeshKit.Cube, gold, cape, new Vector3(0, -h * 0.42f, -0.065f), new Vector3(10, 0, 0), new Vector3(i.chestHalfW * 2.65f, h * 0.025f, 0.026f));
-                Add(cape, oldS < 3);
-                var badge = Accessories.Holder("StarBadge", body, new Vector3(i.chest.x, i.chest.y, i.chestFrontZ + 0.02f), rig.chest);
-                var star = Icons.Get("star");
-                MeshKit.Part("Star", MeshKit.Quad, Mats.Fx(false, star.texture, Color.white), badge, Vector3.zero, new Vector3(0, 180, 0), Vector3.one * h * 0.11f);
-                Add(badge, oldS < 3);
+                var pads = Accessories.Holder("EarnedShoulders", f.body, i.chest + Vector3.up * h * 0.02f, rig.chest);
+                float width = g >= 4 ? 0.105f : 0.085f;
+                MeshKit.Part("Left", MeshKit.Sphere, metal, pads, new Vector3(-i.chestHalfW * 1.15f, 0, 0), Vector3.zero, new Vector3(h * width, h * 0.055f, h * 0.09f));
+                MeshKit.Part("Right", MeshKit.Sphere, metal, pads, new Vector3(i.chestHalfW * 1.15f, 0, 0), Vector3.zero, new Vector3(h * width, h * 0.055f, h * 0.09f));
+                Add(pads, oldS < 2 && oldG < 2);
+                var belt = Accessories.Holder("EarnedBelt", f.body, i.hips + Vector3.up * h * 0.01f, rig.hips);
+                MeshKit.Part("Belt", MeshKit.Cylinder, metal, belt, Vector3.zero, Vector3.zero, new Vector3(i.waistR * 2.15f, h * 0.018f, i.waistR * 2.15f));
+                Add(belt, oldS < 2 && oldG < 2);
             }
 
-            // ---------------- gifters (coins this stream)
-            if (g >= 1 && g < 3)
-            {
-                var tiara = Accessories.Holder("Tiara", body, new Vector3(i.headCenter.x, i.headTop - R * 0.18f, i.headCenter.z), rig.head);
-                MeshKit.Part("Band", MeshKit.Cone(1f, 1.05f, 18, false), gold, tiara, Vector3.zero, Vector3.zero, new Vector3(R * 0.7f, R * 0.18f, R * 0.7f));
-                var spike = MeshKit.Cone(1f, 0f, 8);
-                for (int k = 0; k < 5; k++)
-                {
-                    float a = (k / 5f) * Mathf.PI * 2f;
-                    MeshKit.Part("Spike", spike, gold, tiara, new Vector3(Mathf.Cos(a) * R * 0.72f, R * 0.16f, Mathf.Sin(a) * R * 0.72f), Vector3.zero, new Vector3(R * 0.1f, R * 0.22f, R * 0.1f));
-                }
-                Add(tiara, oldG < 1);
-            }
             if (g >= 2)
             {
-                var plate = Accessories.Holder("GoldArmor", body, i.chest, rig.chest);
-                float d = i.chestFrontZ - i.chestBackZ;
-                MeshKit.Part("Plate", MeshKit.Cube, gold, plate, new Vector3(0, -h * 0.03f, (i.chestFrontZ + i.chestBackZ) * 0.5f - i.chest.z), Vector3.zero, new Vector3(i.chestHalfW * 2.2f, h * 0.17f, d * 1.18f + 0.03f));
-                MeshKit.Part("Gem", MeshKit.Sphere, Mats.Emissive(new Color(1f, 0.15f, 0.3f), 2f), plate, new Vector3(0, 0, i.chestFrontZ - i.chest.z + 0.03f), Vector3.zero, Vector3.one * h * 0.04f);
+                var plate = Accessories.Holder("EarnedArmor", f.body, i.chest, rig.chest);
+                float depth = i.chestFrontZ - i.chestBackZ;
+                MeshKit.Part("Plate", MeshKit.Cube, metal, plate,
+                    new Vector3(0, -h * 0.025f, (i.chestFrontZ + i.chestBackZ) * 0.5f - i.chest.z), Vector3.zero,
+                    new Vector3(i.chestHalfW * 2.05f, h * 0.15f, depth * 1.12f + 0.025f));
                 Add(plate, oldG < 2);
             }
-            if (g >= 3)
+
+            // A single short cape replaces stacked costume capes, wings and fur. Silhouettes remain readable.
+            if (s >= 3 || g >= 3)
             {
-                var crown = Accessories.Holder("RoyalCrown", body, new Vector3(i.headCenter.x, i.headTop - R * 0.1f, i.headCenter.z), rig.head);
-                var tmp = new FighterRig { info = i };
-                Accessories.BuildCrown(tmp, crown, new Color(1f, 0.8f, 0.2f), R * 1.05f);
-                Add(crown, oldG < 3);
-                var capeCol = g >= 4 ? new Color(0.45f, 0.12f, 0.75f) : new Color(0.8f, 0.1f, 0.15f);
-                var cape = Accessories.Holder("RoyalCape", body, new Vector3(i.chest.x, i.chest.y + h * 0.06f, i.chestBackZ - 0.04f), rig.chest);
-                MeshKit.Part("Cape", MeshKit.Cube, Mats.Lit(capeCol), cape, new Vector3(0, -h * 0.22f, -0.035f), new Vector3(12, 0, 0), new Vector3(i.chestHalfW * 3f, h * 0.5f, 0.025f));
-                MeshKit.Part("Fur", MeshKit.Torus(1f, 0.4f), Mats.Lit(new Color(0.97f, 0.96f, 0.92f)), cape, new Vector3(0, h * 0.02f, i.chestHalfW * 0.5f), Vector3.zero, new Vector3(i.chestHalfW * 1.25f, i.chestHalfW, i.chestHalfW * 1.1f));
-                Add(cape, oldG < 3 || (g >= 4 && oldG < 4));
-            }
-            if (g >= 4)
-            {
-                var pads = Accessories.Holder("GoldPads", body, i.chest + Vector3.up * h * 0.02f, rig.chest);
-                MeshKit.Part("PadL", MeshKit.Sphere, gold, pads, new Vector3(-i.chestHalfW * 1.3f, 0, 0), Vector3.zero, new Vector3(h * 0.12f, h * 0.07f, h * 0.12f));
-                MeshKit.Part("PadR", MeshKit.Sphere, gold, pads, new Vector3(i.chestHalfW * 1.3f, 0, 0), Vector3.zero, new Vector3(h * 0.12f, h * 0.07f, h * 0.12f));
-                Add(pads, oldG < 4);
+                Color capeColor = g >= 5 ? new Color(0.94f, 0.89f, 0.72f) : g >= 4 ? new Color(0.40f, 0.18f, 0.66f)
+                    : g >= 3 ? new Color(0.72f, 0.12f, 0.16f) : Blue;
+                var cape = Accessories.Holder("EarnedCape", f.body,
+                    new Vector3(i.chest.x, i.chest.y + h * 0.04f, i.chestBackZ - 0.035f), rig.chest);
+                MeshKit.Part("Cape", MeshKit.Cube, Mats.Lit(capeColor), cape, new Vector3(0, -h * 0.18f, -0.03f),
+                    new Vector3(10, 0, 0), new Vector3(i.chestHalfW * 2.5f, h * 0.36f, 0.025f));
+                MeshKit.Part("Hem", MeshKit.Cube, metal, cape, new Vector3(0, -h * 0.35f, -0.06f),
+                    new Vector3(10, 0, 0), new Vector3(i.chestHalfW * 2.52f, h * 0.018f, 0.028f));
+                Add(cape, s > oldS || g > oldG);
             }
             if (g >= 5)
             {
-                var wings = Accessories.Holder("Wings", body, new Vector3(i.chest.x, i.chest.y + h * 0.03f, i.chestBackZ - 0.08f), rig.chest);
-                var wingMat = Mats.Fx(false, FxTex.Soft, new Color(1f, 0.95f, 0.75f, 0.95f));
-                MeshKit.Part("WingL", MeshKit.Sphere, wingMat, wings, new Vector3(-h * 0.22f, h * 0.06f, -0.02f), new Vector3(0, 0, 35), new Vector3(h * 0.4f, h * 0.16f, 0.03f));
-                MeshKit.Part("WingR", MeshKit.Sphere, wingMat, wings, new Vector3(h * 0.22f, h * 0.06f, -0.02f), new Vector3(0, 0, -35), new Vector3(h * 0.4f, h * 0.16f, 0.03f));
-                Add(wings, oldG < 5);
-                var halo = Accessories.Holder("Halo", body, new Vector3(i.headCenter.x, i.headTop + R * 0.55f, i.headCenter.z), rig.head);
-                MeshKit.Part("Ring", MeshKit.Torus(1f, 0.12f), Mats.Emissive(new Color(1f, 0.9f, 0.4f), 3f), halo, Vector3.zero, Vector3.zero, Vector3.one * R * 0.75f);
-                Add(halo, oldG < 5);
+                var crest = Accessories.Holder("LegendCrest", f.body,
+                    new Vector3(i.chest.x, i.chest.y + h * 0.035f, i.chestFrontZ + 0.025f), rig.chest);
+                MeshKit.Part("Gem", MeshKit.Sphere, Mats.Emissive(new Color(0.45f, 0.85f, 1f), 1.3f), crest,
+                    Vector3.zero, Vector3.zero, Vector3.one * h * 0.045f);
+                Add(crest, oldG < 5);
             }
+        }
+
+        /// <summary>Leaderboard rank is a small shoulder medal; it never changes combat statistics.</summary>
+        public static void SetRank(Fighter f, int rank)
+        {
+            int visibleRank = rank >= 1 && rank <= 3 ? rank : 0;
+            if (f.gearRank == visibleRank) return;
+            if (f.rankInsignia != null)
+            {
+                f.rankInsignia.gameObject.SetActive(false);
+                Object.Destroy(f.rankInsignia.gameObject);
+                f.rankInsignia = null;
+            }
+            f.gearRank = visibleRank;
+            if (visibleRank == 0 || !f.IsAlive) return;
+            var i = f.rig.info;
+            var color = visibleRank == 1 ? Gold : visibleRank == 2 ? Silver : Bronze;
+            var holder = Accessories.Holder("RankMedal", f.body,
+                i.chest + new Vector3(-i.chestHalfW * 0.88f, i.height * 0.065f, 0), f.rig.chest);
+            MeshKit.Part("Medal", MeshKit.Cylinder, Mats.Metal(color), holder,
+                Vector3.zero, Vector3.zero, new Vector3(i.height * 0.075f, i.height * 0.013f, i.height * 0.075f));
+            Fighter.Layerize(holder.gameObject);
+            f.rankInsignia = holder;
         }
     }
 
-    /// <summary>Springy pop-in for new gear (0 -> 1.25 -> 1 in 0.4 s).</summary>
     public class PopIn : MonoBehaviour
     {
         Vector3 target;
@@ -177,7 +201,7 @@ namespace Arena
         void Update()
         {
             t += Time.deltaTime / 0.4f;
-            float s = t < 0.6f ? Mathf.Lerp(0f, 1.25f, t / 0.6f) : Mathf.Lerp(1.25f, 1f, (t - 0.6f) / 0.4f);
+            float s = t < 0.6f ? Mathf.Lerp(0f, 1.18f, t / 0.6f) : Mathf.Lerp(1.18f, 1f, (t - 0.6f) / 0.4f);
             transform.localScale = target * s;
             if (t >= 1f) { transform.localScale = target; Destroy(this); }
         }

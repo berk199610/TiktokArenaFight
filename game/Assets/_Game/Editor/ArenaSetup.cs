@@ -87,6 +87,69 @@ namespace Arena.EditorTools
         }
 
         // ------------------------------------------------------------------ materials
+        /// <summary>Read-only diagnostic; does not rebuild scenes, controllers, imports or player settings.</summary>
+        public static void AuditFighterMaterials()
+        {
+            var audit = new StringBuilder();
+            int broken = 0;
+            var modelPaths = Directory.Exists(StickDir) ? Directory.GetFiles(StickDir, "*.fbx") : Array.Empty<string>();
+            foreach (var path in modelPaths.Select(p => p.Replace('\\', '/')))
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null) { audit.AppendLine("MISSING " + path); broken++; continue; }
+                foreach (var renderer in prefab.GetComponentsInChildren<Renderer>(true))
+                {
+                    foreach (var material in renderer.sharedMaterials)
+                    {
+                        bool valid = material != null && material.shader != null && material.shader.isSupported
+                            && !ShaderUtil.ShaderHasError(material.shader);
+                        if (!valid) broken++;
+                        audit.AppendLine(Path.GetFileName(path) + " / " + renderer.name + " / "
+                            + (material != null ? material.name : "MISSING") + " / "
+                            + (material != null && material.shader != null ? material.shader.name : "MISSING SHADER")
+                            + " / valid=" + valid);
+                    }
+                }
+            }
+            foreach (string name in new[] { "M_Lit", "M_Metal", "M_LitEmissive", "M_XRay", "M_UIOnTop" })
+            {
+                var material = AssetDatabase.LoadAssetAtPath<Material>(MatDir + "/" + name + ".mat");
+                string expected = name == "M_XRay" ? "Arena/XRay" : name == "M_UIOnTop" ? "Arena/UIOnTop"
+                    : "Universal Render Pipeline/Lit";
+                bool valid = material != null && material.shader != null && material.shader.isSupported
+                    && material.shader.name == expected && !ShaderUtil.ShaderHasError(material.shader);
+                if (!valid) broken++;
+                audit.AppendLine(name + " / " + (material != null && material.shader != null ? material.shader.name : "MISSING")
+                    + " / valid=" + valid);
+            }
+            audit.AppendLine("Invalid material slots: " + broken);
+            Directory.CreateDirectory("../_test-output");
+            File.WriteAllText("../_test-output/material-audit.txt", audit.ToString());
+            Debug.Log("[Arena] Fighter material audit:\n" + audit);
+            if (broken > 0) Debug.LogError("[Arena] Unsupported or missing fighter materials: " + broken);
+        }
+
+        /// <summary>
+        /// Generated materials were copied from the separate build project without that project's shader
+        /// .meta files. Rebind only those two broken shader references; preserve material GUIDs and scene setup.
+        /// </summary>
+        public static void RepairVisualMaterialReferences()
+        {
+            foreach (var pair in new[] { (material: "M_XRay", shader: "Arena/XRay"), (material: "M_UIOnTop", shader: "Arena/UIOnTop") })
+            {
+                var material = AssetDatabase.LoadAssetAtPath<Material>(MatDir + "/" + pair.material + ".mat");
+                var shader = Shader.Find(pair.shader);
+                if (material == null || shader == null)
+                    throw new Exception("Missing visual material or shader: " + pair.material + " / " + pair.shader);
+                if (material.shader == shader) continue;
+                material.shader = shader;
+                EditorUtility.SetDirty(material);
+                Debug.Log("[Arena] Repaired shader reference: " + pair.material + " -> " + pair.shader);
+            }
+            AssetDatabase.SaveAssets();
+            AuditFighterMaterials();
+        }
+
         static Material SaveMat(Material m, string path)
         {
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -838,6 +901,7 @@ namespace Arena.EditorTools
         [MenuItem("Arena/Windows için derle")]
         public static void BuildWindows()
         {
+            ArenaSetup.AuditFighterMaterials();
             var opts = new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Scenes/Main.unity" },
@@ -853,6 +917,12 @@ namespace Arena.EditorTools
         public static void SetupAndBuild()
         {
             ArenaSetup.RunAll();
+            BuildWindows();
+        }
+
+        public static void RepairMaterialsAndBuild()
+        {
+            ArenaSetup.RepairVisualMaterialReferences();
             BuildWindows();
         }
     }

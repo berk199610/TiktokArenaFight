@@ -20,7 +20,11 @@ namespace Arena
 
         public PersistenceService()
         {
-            FilePath = System.IO.Path.Combine(Application.persistentDataPath, "arena_records.json");
+            string dataPath = Application.persistentDataPath;
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < args.Length; i++)
+                if (args[i] == "-test-data") { dataPath = System.IO.Path.GetFullPath(args[i + 1]); Directory.CreateDirectory(dataPath); break; }
+            FilePath = System.IO.Path.Combine(dataPath, "arena_records.json");
             Load();
         }
 

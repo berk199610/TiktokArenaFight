@@ -6,8 +6,8 @@ using UnityEngine.UI;
 namespace Arena
 {
     /// <summary>
-    /// TOP 10 scoreboard (user request): a big screen hanging at the back of the arena, always turned to the camera
-    /// and never hidden by the walls. #1 gold with a small crown, #2 silver, #3 bronze. Live: rows slide when the order
+    /// A physical TOP 5 stadium board. Its stand stays in the arena; only its face turns toward the camera.
+    /// #1 gold with a small crown, #2 silver, #3 bronze. Live: rows slide when the order
     /// changes with green / red arrows, flash and pop "+10" on a knock-out, a green dot shows who is fighting right
     /// now, a gift box marks gifters, and a new leader gets a "NEW LEADER!" moment. Simple English + icons.
     /// </summary>
@@ -33,10 +33,13 @@ namespace Arena
         RectTransform panel;
         Text title;
         Image titleCrown;
-        Material onTop;
+        readonly Vector3[] screenCorners = new Vector3[4];
+        Rect screenBounds;
+        bool boundsVisible;
         bool dirty = true;
         float nextRefresh, newLeaderUntil;
         string leaderId;
+        string defaultTitle;
         float H;
         static GameConfig Cfg => GameConfig.Current;
 
@@ -54,12 +57,8 @@ namespace Arena
         /// <summary>Is this screen point (pixels) on the scoreboard? Name tags and emotes there are hidden.</summary>
         public static bool Covers(Vector3 screen)
         {
-            var bc = GameConfig.Current.board;
-            float vy = screen.y / Mathf.Max(1f, Screen.height), vx = screen.x / Mathf.Max(1f, Screen.width);
-            float halfH = bc.heightFrac * 0.5f + 0.01f;
-            float aspect = Screen.width / (float)Mathf.Max(1, Screen.height);
-            float halfW = bc.heightFrac * (W / (Pad + Header + Row1H + (bc.rows - 1) * RowH + Pad)) / aspect * 0.5f + 0.01f;
-            return Mathf.Abs(vy - bc.screenY) < halfH && Mathf.Abs(vx - 0.5f) < halfW;
+            var board = GameManager.I != null ? GameManager.I.Board : null;
+            return board != null && board.boundsVisible && board.screenBounds.Contains(new Vector2(screen.x, screen.y));
         }
 
         public void OnKill(Viewer killer, bool boss)
@@ -74,20 +73,25 @@ namespace Arena
                 }
         }
 
-        T M<T>(T g) where T : Graphic { if (onTop != null) g.material = onTop; return g; }
+        // Default world-space UI respects depth. The stadium wall can genuinely occlude the screen.
+        T M<T>(T g) where T : Graphic => g;
 
         void Build()
         {
-            var baseMat = Resources.Load<Material>("Materials/M_UIOnTop");
-            onTop = baseMat != null ? new Material(baseMat) : null;
-            int n = Mathf.Clamp(Cfg.board.rows, 3, 10);
+            int n = Mathf.Clamp(Cfg.board.rows, 1, 5);
+            defaultTitle = "TOP " + n;
             H = Pad + Header + Row1H + (n - 1) * RowH + Pad;
 
             var canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
-            canvas.sortingOrder = 50;
+            canvas.sortingOrder = 0;
             panel = (RectTransform)transform;
             panel.sizeDelta = new Vector2(W, H);
+            transform.localScale = Vector3.one * (6f * Cfg.board.scale / W);
+            transform.position = GameManager.I.World.boardAnchor.position;
+            StadiumSigns.BuildFrame(transform, W, H, Gold);
+            var world = GameManager.I.World;
+            StadiumSigns.BuildStand(world.root, transform.position, world.CamForwardFlat, world.CamRightFlat, 6f * Cfg.board.scale);
 
             // frame: gold rim, dark glassy inside, soft top shine
             var rim = M(Ui.Image(panel, "Rim", Ui.Rounded, Gold));
@@ -100,7 +104,7 @@ namespace Arena
 
             titleCrown = M(Ui.Image(panel, "TitleCrown", Icons.Get("crown"), Color.white));
             PlaceTL(titleCrown.rectTransform, 22, Pad + 8, 60, 60);
-            title = M(Ui.Text(panel, "Title", "TOP 10", 56, Gold, TextAnchor.MiddleLeft, Ui.FontBlack));
+            title = M(Ui.Text(panel, "Title", defaultTitle, 56, Gold, TextAnchor.MiddleLeft, Ui.FontBlack));
             PlaceTL(title.rectTransform, 92, Pad + 4, 420, 66);
             var killIcon = M(Ui.Image(panel, "KillsIcon", Icons.Get("swords"), Color.white));
             PlaceCenter(killIcon.rectTransform, 220, -(Pad + Header * 0.5f), 40, 40);
@@ -188,7 +192,7 @@ namespace Arena
         {
             var gm = GameManager.I;
             var top = gm.ScoreRecords()
-                .Where(r => r.points > 0 || r.kills > 0)
+                .Where(r => !string.IsNullOrEmpty(r.nickname))
                 .OrderByDescending(r => r.points).ThenByDescending(r => r.kills).ThenBy(r => r.nickname)
                 .Take(rows.Count).ToList();
             float now = Time.time;
@@ -257,18 +261,25 @@ namespace Arena
                 Refresh();
             }
 
-            // hang at the back of the arena, turned to the camera, always on the same spot of the screen
-            var bc = Cfg.board;
+            // A fixed stadium location, not a viewport ray. Following/zooming now creates real parallax.
             var cam = gm.Cam.cam;
-            float worldH = 2f * bc.depth * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * bc.heightFrac;
-            var ray = cam.ViewportPointToRay(new Vector3(0.5f, bc.screenY, 0f));
-            transform.position = ray.origin + ray.direction * bc.depth;
-            transform.rotation = Quaternion.LookRotation(ray.direction, cam.transform.up) * Quaternion.Euler(-bc.tiltDeg, 0, 0);
-            transform.localScale = Vector3.one * (worldH / H);
+            transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position, Vector3.up);
+            transform.localScale = Vector3.one * (6f * Cfg.board.scale / W);
+            panel.GetWorldCorners(screenCorners);
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+            boundsVisible = true;
+            for (int j = 0; j < screenCorners.Length; j++)
+            {
+                var p = cam.WorldToScreenPoint(screenCorners[j]);
+                boundsVisible &= p.z > 0f;
+                minX = Mathf.Min(minX, p.x); minY = Mathf.Min(minY, p.y);
+                maxX = Mathf.Max(maxX, p.x); maxY = Mathf.Max(maxY, p.y);
+            }
+            screenBounds = Rect.MinMaxRect(minX, minY, maxX, maxY);
 
-            // title: "TOP 10" or the new-leader moment
+            // Keep the existing leader celebration, in the physical display.
             bool leaderMoment = now < newLeaderUntil;
-            title.text = leaderMoment ? "NEW LEADER!" : "TOP 10";
+            title.text = leaderMoment ? "NEW LEADER!" : defaultTitle;
             title.color = leaderMoment ? Color.Lerp(Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(now * 12f)) : Gold;
             titleCrown.rectTransform.localRotation = Quaternion.Euler(0, 0, leaderMoment ? Mathf.Sin(now * 10f) * 14f : Mathf.Sin(now * 1.5f) * 4f);
             titleCrown.rectTransform.localScale = Vector3.one * (leaderMoment ? 1.15f + Mathf.Sin(now * 12f) * 0.1f : 1f);

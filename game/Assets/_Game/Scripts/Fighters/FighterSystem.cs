@@ -111,7 +111,8 @@ namespace Arena
             var body = new GameObject("Body").transform;
             body.SetParent(go.transform, false);
 
-            var prefab = Resources.Load<GameObject>("Stickman/" + c.model);
+            string modelName = CostumeCatalog.StarterModel;
+            var prefab = Resources.Load<GameObject>("Stickman/" + modelName);
             GameObject modelGo;
             Animator animator;
             if (prefab != null)
@@ -123,7 +124,7 @@ namespace Arena
             else
             {
                 // fallback when the licensed pack is missing (fresh clone of the public repo): Quaternius mannequin
-                Debug.LogWarning("[Arena] Model yok: Resources/Stickman/" + c.model);
+                Debug.LogWarning("[Arena] Model yok: Resources/Stickman/" + modelName);
                 modelGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 Object.Destroy(modelGo.GetComponent<Collider>());
                 modelGo.transform.SetParent(body, false);
@@ -145,11 +146,11 @@ namespace Arena
             }
 
             // normalise height so every costume is the same size
-            var rig = new FighterRig { info = Accessories.Measure(c.model, body, animator) };
+            var rig = new FighterRig { info = Accessories.Measure(modelName, body, animator) };
             float scale = rig.info.height > 0.1f ? TargetHeight / rig.info.height : 1f;
             modelGo.transform.localScale *= scale;
             animator.Update(0f);
-            rig.info = Accessories.Measure(c.model + "@n", body, animator);
+            rig.info = Accessories.Measure(modelName + "@n", body, animator);
 
             rig.head = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : modelGo.transform;
             rig.neck = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Neck) : modelGo.transform;
@@ -159,7 +160,7 @@ namespace Arena
             rig.handL = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.LeftHand) : null;
             rig.footR = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.RightFoot) : null;
 
-            Accessories.BuildAll(c, rig, body, false);
+            Gear.PrepareBase(rig, modelGo.transform);
             rig.crown = Accessories.BuildGifterCrown(rig, body);
             if (System.Environment.CommandLine.Contains("-gallery") && rig.accessoryRenderers.Count > 0)
             {

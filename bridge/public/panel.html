@@ -35,6 +35,17 @@
 </header>
 <main>
   <section>
+    <h2>TikTok LIVE bağlantısı</h2>
+    <div class="row"><input id="ttuser" type="text" placeholder="TikTok kullanıcı adı ( @ olmadan da olur )"></div>
+    <div class="row">
+      <button onclick="tiktok('start')">TikTok LIVE'a bağlan</button>
+      <button onclick="tiktok('stop')">Simülatöre dön</button>
+    </div>
+    <div id="ttstatus" class="muted">Gerçek yayına bağlanmak için önce TikTok hesabında LIVE başlat.</div>
+    <div id="ttcounts" class="muted" style="margin-top:8px"></div>
+  </section>
+
+  <section>
     <h2>Tek izleyici olarak dene</h2>
     <div class="row"><input id="user" type="text" placeholder="İzleyici adı (boş = Berk)"></div>
     <div class="row">
@@ -43,7 +54,7 @@
       <button onclick="sim('like',{count:5})">❤️ x5</button>
     </div>
     <div class="row" id="gifts"></div>
-    <div class="muted">Hediye: 1 Yumruk · 5 Sopa · 30 Kürek · 100 Döner Tekme · 300 Dalga · 1.000 Dev · 5.000 Tornado</div>
+    <div class="muted">Hediye: 1 Yumruk · 5 Sopa · 30 Kürek · 100 Döner Tekme · 300 Dalga · 1.000 Dev · 2.500 Şimşek · 5.000 Tornado</div>
   </section>
 
   <section>
@@ -71,7 +82,7 @@
   </section>
 </main>
 <script>
-  const tiers = [['Yumruk',1],['Sopa',5],['Kürek',30],['Döner Tekme',100],['Dalga',300],['Dev',1000],['Tornado',5000]];
+  const tiers = [['Yumruk',1],['Sopa',5],['Kürek',30],['Döner Tekme',100],['Dalga',300],['Dev',1000],['Şimşek',2500],['Tornado',5000]];
   const g = document.getElementById('gifts');
   tiers.forEach(([n,c],i) => { const b=document.createElement('button'); b.className='gift'; b.textContent=`🎁 ${n} (${c})`; b.onclick=()=>sim('gift',{tier:i}); g.appendChild(b); });
   let ws;
@@ -80,10 +91,18 @@
     ws.onmessage = (m) => {
       const s = JSON.parse(m.data);
       if (s.t !== 'status') return;
+      const ttInput = document.getElementById('ttuser');
+      if (!ttInput.value && s.savedUsername && document.activeElement !== ttInput) ttInput.value = s.savedUsername;
       const game = document.getElementById('game');
       game.textContent = s.gameConnected ? 'Oyun bağlı' : 'Oyun bağlı değil';
       game.className = 'pill ' + (s.gameConnected ? 'ok' : 'bad');
       document.getElementById('src').textContent = 'Kaynak: ' + (s.provider === 'tiktok' ? (s.tiktokConnected ? 'TikTok (bağlı)' : 'TikTok (bağlanıyor)') : 'Simülatör');
+      if (s.provider === 'tiktok') document.getElementById('ttstatus').textContent = s.tiktokStatus || (s.tiktokConnected ? 'TikTok LIVE bağlı; hediyeler oyuna aktarılıyor.' : 'TikTok bağlantısı bekleniyor.');
+      else document.getElementById('ttstatus').textContent = 'Simülatör açık; sahte hediyelerle test edebilirsin.';
+      const counts = s.tiktok?.counts;
+      document.getElementById('ttcounts').textContent = s.provider === 'tiktok' && counts
+        ? `TikTok'tan gelen: ${counts.comment} yorum · ${counts.like} beğeni olayı · ${counts.gift} hediye olayı` + (!s.gameConnected ? ' — Oyunu aç: henüz oyuna bağlı değil.' : '')
+        : '';
       document.getElementById('eps').textContent = s.eventsPerSecond + ' olay/sn';
     };
     ws.onclose = () => setTimeout(connect, 1500);
@@ -93,6 +112,15 @@
   const user = () => document.getElementById('user').value;
   function sim(action, extra={}) { send({ t:'sim', action, user:user(), ...extra }); }
   function cmd(c, arg='') { send({ t:'cmd', cmd:c, arg }); }
+  async function tiktok(action) {
+    const status = document.getElementById('ttstatus');
+    status.textContent = action === 'start' ? 'TikTok bağlantısı deneniyor…' : 'Simülatöre dönülüyor…';
+    try {
+      const response = await fetch('/api/tiktok', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action, username:document.getElementById('ttuser').value }) });
+      const result = await response.json();
+      status.textContent = result.status || result.error || (result.ok ? 'Komut gönderildi.' : 'Bağlantı başlatılamadı.');
+    } catch (e) { status.textContent = 'Köprüye ulaşılamadı. Köprü penceresinin açık olduğunu kontrol et.'; }
+  }
   const bind = (id, out, action, f=(v)=>v) => { const el=document.getElementById(id); el.oninput=()=>{ document.getElementById(out).textContent=el.value; send({t:'sim', action, value:f(Number(el.value))}); }; };
   bind('viewers','vval','viewers'); bind('rate','rval','rate'); bind('gshare','gval','giftShare',(v)=>v/100);
 </script>

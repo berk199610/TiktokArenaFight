@@ -46,7 +46,7 @@ namespace Arena
                 case ViewerState.InArena:
                     return;
                 case ViewerState.Dead:
-                    // the dead come back straight away with a comment (user request), after a short death pause
+                    // Likes/comments never bypass the sixty-second return time; only a gift can do that.
                     if (now >= v.deadUntil && CanReenterByComment(v) && HasRoom) { SpawnAtGate(v, now, false); return; }
                     v.interactedSinceDeath = true;  // counted when the pause ends
                     return;
@@ -130,10 +130,12 @@ namespace Arena
 
         Fighter SpawnAtGate(Viewer v, float now, bool gift)
         {
+            if (v.fighter != null && v.fighter.active && !v.fighter.IsAlive) GM.Fighters.Despawn(v.fighter);
             var gate = GM.World.gates[gateToggle++ % 2];
             gate.Strike();
             var runTo = Vector3.Lerp(gate.SpawnPoint, Vector3.zero, Random.Range(0.55f, 0.9f)) + new Vector3(Random.Range(-3f, 3f), 0, Random.Range(-3f, 3f));
             var f = GM.Fighters.Spawn(v, gate.SpawnPoint + Random.insideUnitSphere.WithY(0) * 0.4f, runTo, now);
+            v.deadUntil = 0f;
             v.interactedSinceDeath = false;
             v.enteredRound = GM.RoundNo;
             if (v.pendingGifts.Count > 0)
@@ -172,6 +174,12 @@ namespace Arena
             {
                 if (v.isBot) { v.state = ViewerState.Watching; continue; }
                 v.fighter = null;
+                // A new round must not silently cancel a non-gifter's death cooldown.
+                if (v.deadUntil > now && v.pendingGifts.Count == 0)
+                {
+                    v.state = ViewerState.Dead;
+                    continue;
+                }
                 bool recent = now - v.lastInteraction <= Cfg.round.prepRecentSec;
                 bool gifter = v.pendingGifts.Count > 0 || now - v.lastGiftTime <= Cfg.roster.giftProtectionSec;
                 v.state = ViewerState.Watching;
@@ -221,27 +229,31 @@ namespace Arena
             {
                 if (v.state != ViewerState.Dead || now < v.deadUntil) continue;
                 if (v.isBot) { v.state = ViewerState.Watching; continue; }
-                if (v.interactedSinceDeath)
+                if (CanReenterByComment(v) && HasRoom)
                 {
-                    if (CanReenterByComment(v) && HasRoom) SpawnAtGate(v, now, false);
-                    else Enqueue(v, now);
+                    SpawnAtGate(v, now, false);
                 }
+                else if (CanReenterByComment(v)) Enqueue(v, now);
                 else v.state = ViewerState.WaitingReentry;
             }
 
             // queue: when there is room, the most active one goes in
-            if (gm.CommentEntryOpen && queue.Count > 0 && HasRoom && prepList.Count == 0)
+            if (queue.Count > 0 && HasRoom && prepList.Count == 0)
             {
                 float since = now - Cfg.roster.evictActivityWindowSec;
-                int bi = 0, best = -1;
+                int bi = -1, best = -1;
                 for (int i = 0; i < queue.Count; i++)
                 {
+                    if (!CanReenterByComment(queue[i])) continue;
                     int s = queue[i].InteractionsSince(since);
                     if (s > best) { best = s; bi = i; }
                 }
-                var v = queue[bi];
-                queue.RemoveAt(bi);
-                SpawnAtGate(v, now, false);
+                if (bi >= 0)
+                {
+                    var v = queue[bi];
+                    queue.RemoveAt(bi);
+                    SpawnAtGate(v, now, false);
+                }
             }
 
             Count(out int real, out int bots);

@@ -4,7 +4,7 @@ The user (Berk) writes Turkish and does not code: answer in Turkish, plain langu
 
 ## What this is
 TikTok LIVE survivor brawl in Unity 6.3 LTS (6000.3.28f1, URP). Viewers join as fighters via comment/like/gift;
-fighters fight with utility AI; gifts trigger 7 special moves. Rules: `docs/Arena-Dovusu-Tasarim.pdf`
+fighters fight with utility AI; gifts trigger 8 special moves. Rules: `docs/Arena-Dovusu-Tasarim.pdf`
 (text: `docs/DESIGN.md`). Decisions/ambiguities: `docs/TASARIM-NOTLARI.md`. Ask Berk before changing a game rule;
 numbers live in `game/Assets/StreamingAssets/config.json` (hot-reloaded, no magic numbers in code).
 
@@ -21,8 +21,9 @@ numbers live in `game/Assets/StreamingAssets/config.json` (hot-reloaded, no magi
   Re-run it after changing import/animator code. State names in `FighterAnimation` must match `CreateAnimator`.
 - UI icons and emoji faces are painted from code (`UI/Icons.cs`); scoreboard = `UI/LeaderboardPanel.cs` (camera-facing, `Arena/UIOnTop` shader); hit reaction by force / poise in `Fighter.TakeHit`; gear levels in `Fighters/Gear.cs`; emotes in `UI/EmoteSystem.cs`; fighters on layer 8 with x-ray RenderObjects features (set up by `ArenaSetup.ConfigureRenderer`).
 - `game/Assets/_Private/` (gitignored): licensed stickman pack + arena model (Resources/Stickman, Resources/ArenaModel).
-- `bridge/` Node ESM (only dep `ws`), port 8788 (8787 is the football project's bridge). `src/tiktok.js` is a stub
-  (Aşama 5: read the current tiktok-live-connector docs, do not guess field names; count gift streaks once).
+- `bridge/` Node ESM (`ws` and `tiktok-live-connector`), port 8788 (8787 is the football project's bridge).
+  Real TikTok events are normalized in `src/tiktok-events.js`; streak updates send only newly received quantities.
+  `tools/node/node.exe --test bridge/test/tiktok-events.test.js bridge/test/bridge.test.js` validates the bridge.
 - `tools/node/` portable Node (gitignored). `BASLAT.bat` starts bridge + panel + game.
 
 ## Commands (Git Bash)
@@ -44,6 +45,14 @@ assets overwrite the freshly generated controller / renderer), run setup + build
 `TiktokArenaFight-build\Builds\Windows`, then copy generated assets back (`_Game/Resources/Anim`,
 `_Game/Art/Animations/Custom`, `_Game/Resources/Materials`, `_Private/Resources/Materials`, `Settings`) and the build to
 `Builds\Windows`. `-autotest` logs attacks / hits / brain decisions every 5 s: if `applies` stays 0 the brains are starved.
+
+Shader references must match the main project's shader `.meta` GUIDs after copying generated materials back.
+Mismatched `M_XRay` references previously produced magenta boots despite valid model materials. Use
+`Arena.EditorTools.BuildScript.RepairMaterialsAndBuild` to rebind these references without rebuilding the scene.
+Runtime regression: `-review -test-data <isolated-folder> -bridge-url ws://127.0.0.1:<test-port>/game`.
+Wait for the review fixture and socket before injecting the `BridgeReview` 30-coin simulator gift.
+The latest user decisions in `docs/TASARIM-NOTLARI.md` supersede older PDF rules (plain starter, TOP 5,
+physical signs, sixty-second death cooldown). Always isolate automated tests from real viewer records.
 
 ## Conventions
 - C# 9 max. No per-frame allocations in hot paths (static lists, pools). Brains think every 0.2–0.4 s, staggered.

@@ -110,6 +110,7 @@ namespace Arena
                     break;
                 }
             }
+            GameManager.I.Board?.MarkDirty();
         }
     }
 }

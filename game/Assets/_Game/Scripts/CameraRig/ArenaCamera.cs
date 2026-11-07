@@ -15,6 +15,7 @@ namespace Arena
         float dist, distVel, wantDist;
         Fighter nudge;
         float nudgeUntil;
+        float giftZoomUntil;
         public Vector3 FocusPoint => focus;
         public bool Frozen;
 
@@ -42,6 +43,13 @@ namespace Arena
             if (!big || f == null) return;
             nudge = f;
             nudgeUntil = Time.time + 3.5f;
+        }
+
+        public void OnGift(Fighter f, int coins)
+        {
+            var c = GameConfig.Current.camera;
+            if (coins >= c.giftNudgeMinCoins) NudgeToward(f, true);
+            if (coins >= c.giftZoomMinCoins) giftZoomUntil = Time.time + c.giftZoomSec;
         }
 
         void LateUpdate()
@@ -84,9 +92,12 @@ namespace Arena
                 spread = n > 0 ? Mathf.Sqrt(s2 / n) : 0f;
             }
             float breath = Mathf.Sin(Time.time * Mathf.PI * 2f / Mathf.Max(4f, c.breathPeriodSec)) * c.breathAmp;
-            float goal = Mathf.Lerp(c.minDistance, c.maxDistance, Mathf.Clamp01(spread / Mathf.Max(0.1f, c.spreadForMax))) + breath;
+            float near = Mathf.Min(c.maxDistance, c.minDistance + c.restingDistanceOffset);
+            float giftZoom = Mathf.Clamp01((giftZoomUntil - Time.time) / Mathf.Max(0.1f, c.giftZoomSec)) * c.giftZoomAmount;
+            float goal = Mathf.Lerp(near, c.maxDistance, Mathf.Clamp01(spread / Mathf.Max(0.1f, c.spreadForMax))) + breath - giftZoom;
+            goal = Mathf.Clamp(goal, c.minDistance, c.maxDistance + c.breathAmp);
             // the goal itself moves slowly, so the zoom never jumps
-            wantDist = Mathf.MoveTowards(wantDist, goal, dt * 1.5f);
+            wantDist = Mathf.MoveTowards(wantDist, goal, dt * c.maxZoomSpeed);
 
             float smooth = Mathf.Max(0.05f, c.followSec * 0.45f);
             focus = Vector3.SmoothDamp(focus, target, ref focusVel, smooth, c.maxFocusSpeed, dt);

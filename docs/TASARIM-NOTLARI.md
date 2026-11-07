@@ -1,7 +1,36 @@
 # Tasarım notları — dokümandan sapmalar, yorumlar, açık sorular
 
-Doküman (PDF) asıl kaynaktır. Burada dokümanda belirsiz olan yerlerde verilen kararlar durur.
+Doküman (PDF) başlangıç tasarımıdır. Berk'in daha sonra açıkça istediği değişiklikler önceliklidir.
+Burada dokümanda belirsiz olan yerlerde verilen kararlar ve sonraki istekler durur.
 Hepsi `config.json`'dan değiştirilebilir; kural değişikliği gerekirse önce Berk'e sorulur.
+
+## Son istek — 7 Kasım 2026 (güncel)
+
+Bu kararlar aşağıdaki eski ölüm süresi, rastgele kostüm, ekrana sabit TOP 10 tablo ve yakın kamera notlarının yerine geçer.
+
+23. **Herkes sade başlar.** Görsel taban aynı basit gri Bandit modelidir; eski rastgele kostüm aksesuarları başlangıçta
+    takılmaz. FBX malzeme yuvaları projenin URP malzemeleriyle hazırlanır. Üç destek ve beş hediye seviyesi eski
+    eşikleri kullanır: 20/100/300 beğeni veya 3/10/25 yorum; yayında biriken 1/30/300/1.000/5.000 coin.
+    Bileklik, omuzluk/kemer, hediye zırhı ve tek kısa pelerin kademeli açılır. İlk üçe küçük sıra madalyası verilir.
+    Görünüm savaş istatistiklerini değiştirmez.
+24. **Fiziksel TOP 5 tablo.** Tribünde metal gövdeli ve sabit konumludur; yalnızca yüzü kameraya döner.
+    Ekran koordinatından yerleştirilmez, kamera hareketini izlemez. Normal derinlik testi kullanır; duvar arkasından
+    zorla çizdirilmez. Lider, sıra değişimi, devirme parlamaları korunur.
+25. **Üç küçük fiziksel pano.** Kalp +1 ve yorum +5; 100+ coin hediye → tam can ve her hediye → geri dönüş;
+    köşede iki sütunlu sekiz kademe coin → hareket simgesi rehberi. Panolar tribünde kalır, kameraya döner.
+    Eski ekran üstü büyük hediye rehberi gizlenir. 100 coin altındaki hediyeler eski coin×10 can kuralını korur.
+26. **Ölüm beklemesi 60 saniye.** Ölenin yerinde küçük mezar taşı ve dolan çubuk kalır; yorum/beğeni beklemeyi atlatmaz.
+    Süre dolunca hazırlık/savaşta giriş uygunsa otomatik dönüş olur; yer doluysa sıraya alınır. Yeni tur başlaması kalan
+    beklemeyi iptal etmez. Hazırlık/savaşta hediye hemen diriltir ve hareketini korur. Son savaş/kazanan aşamasında
+    ölü/yeni oyuncuya gelen hediye sonraki hazırlığa saklanır; hayatta olanın hediyesi mevcut karakterini etkiler.
+27. **Sakin kamera.** Normal uzaklık biraz artırılır; mevcut yakın sınır korunur. Yumuşak takip, az miktarda
+    yaklaşma/uzaklaşma ve büyük hediyeye küçük geçici yakınlaşma vardır.
+28. **Klasör ayrımı.** Düzenlenen Unity kaynağı `C:\Projeler\TiktokArenaFight\game` içindedir. Kaynak derlemesi
+    `C:\Projeler\TiktokArenaFight\Builds\Windows`; OneDrive masaüstündeki `TiktokLive\TikTokLiveArenaFight`
+    klasörü çalıştırılabilir oyun kopyasıdır. Bu klasörü Unity kaynak projesi sanmayın.
+29. **Yalıtılmış kontroller.** `-test-data <klasör>` ayrı kayıt alanı, `-bridge-url <adres>` ayrı köprü, `-review`
+    kıyafet/ölüm/hediye/sabit tablo senaryosu için kullanılır. Bunlar bir test yöntemi tarifidir; başarılı çalışma
+    ve gerçek TikTok LIVE bağlantısı ayrıca doğrulanır.
 
 ## Kararlar (2026-11-07)
 1. **Ölüm cezası 40 sn.** Doküman bölüm 1'de 30 sn, bölüm 3'te 40 sn diyor; ayrıntılı kural (40) uygulandı

@@ -77,6 +77,8 @@ namespace Arena
         public float lastEmoteHelpAt = -99f;
         public readonly System.Collections.Generic.List<GameObject> gearParts = new System.Collections.Generic.List<GameObject>();
         public int gearSupport = -1, gearGift = -1;
+        public int gearRank;
+        public Transform rankInsignia;
 
         static GameConfig Cfg => GameConfig.Current;
         public Vector3 Pos => motor.pos;
@@ -146,7 +148,7 @@ namespace Arena
             anim.Reset(animSpeed);
             SetGifterLook(false, false);
             if (rig.crown) rig.crown.gameObject.SetActive(false);
-            Accessories.SetGold(rig, v.record != null && v.record.goldUnlocked);
+            Gear.SetRank(this, 0);
             Gear.Apply(this, false);
             entryTarget = runTo;
             state = FState.Entering;

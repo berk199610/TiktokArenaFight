@@ -46,7 +46,8 @@ namespace Arena
 
         [Serializable] public class Death
         {
-            public float lieSec = 2, penaltySec = 3, reviveMinHp = 500;
+            public float lieSec = 2, penaltySec = 60, reviveMinHp = 500;
+            public float markerHeight = 0.85f, markerWidth = 0.62f;
         }
 
         [Serializable] public class Bots
@@ -128,12 +129,14 @@ namespace Arena
 
         [Serializable] public class CameraCfg
         {
-            public float pitchDeg = 42, yawDeg = 45, fov = 45, minDistance = 16.5f, maxDistance = 21.5f, spreadForMax = 7;
-            public float followSec = 1.5f, maxOffsetFromCenter = 6, maxOffsetForward = 3, giftNudgeWeight = 6, lookAhead = 3.5f; public int giftNudgeMinCoins = 100;
-            public float zoomSec = 3f, breathAmp = 1f, breathPeriodSec = 24f, maxFocusSpeed = 2.5f, maxZoomSpeed = 1.2f;
+            public float pitchDeg = 42, yawDeg = 45, fov = 45, minDistance = 16.5f, maxDistance = 23f, spreadForMax = 7;
+            public float followSec = 1.8f, maxOffsetFromCenter = 3, maxOffsetForward = 1.5f, giftNudgeWeight = 2, lookAhead = 3.5f; public int giftNudgeMinCoins = 100;
+            public float zoomSec = 4f, breathAmp = 0.4f, breathPeriodSec = 28f, maxFocusSpeed = 1.4f, maxZoomSpeed = 0.7f;
+            public float restingDistanceOffset = 1.5f, giftZoomAmount = 0.65f, giftZoomSec = 3.5f;
+            public int giftZoomMinCoins = 1000;
         }
 
-        [Serializable] public class Board { public int rows = 10; public float screenY = 0.745f, heightFrac = 0.255f, depth = 30f, tiltDeg = 10f; public float distanceBehind = 0.3f, height = 1f, scale = 1f; }
+        [Serializable] public class Board { public int rows = 5; public float screenY = 0.745f, heightFrac = 0.255f, depth = 30f, tiltDeg = 10f; public float distanceBehind = -2.5f, height = 2.2f, scale = 0.9f; }
         [Serializable] public class Levels { public int likesL1 = 20, commentsL1 = 3, likesL2 = 100, commentsL2 = 10, likesL3 = 300, commentsL3 = 25; public int[] giftCoins = { 1, 30, 300, 1000, 5000 }; }
         [Serializable] public class Emotes { public float cooldownSec = 4f, showSec = 1.7f; public int maxActive = 14; }
         [Serializable] public class Vigor { public float maxBulk = 1.22f, minBulk = 0.8f, fullForSec = 30, thinAfterSec = 150; }

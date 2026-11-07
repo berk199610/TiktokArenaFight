@@ -32,6 +32,9 @@ namespace Arena
     /// </summary>
     public static class CostumeCatalog
     {
+        // Saved costume IDs still select the original personality. All newcomers now wear the same plain
+        // brawler outfit; earned equipment is added by Gear instead of a random king / robot / wizard costume.
+        public const string StarterModel = "Bandit";
         static readonly Color Gold = new Color(1f, 0.78f, 0.2f);
         static readonly Color Pink = new Color(1f, 0.45f, 0.72f);
         static readonly Color Red = new Color(0.86f, 0.12f, 0.15f);

@@ -15,6 +15,7 @@ namespace Arena
         string dir;
         float seconds = 60f;
         string mode;
+        int failures;
 
         public static void MaybeStart(GameObject host)
         {
@@ -25,6 +26,7 @@ namespace Arena
                 if (args[i] == "-autotest") { mode = "auto"; if (i + 1 < args.Length && float.TryParse(args[i + 1], out var s)) secs = s; }
                 if (args[i] == "-gallery") mode = "gallery";
                 if (args[i] == "-gifts") mode = "gifts";
+                if (args[i] == "-review") mode = "review";
                 if (args[i] == "-shots" && i + 1 < args.Length) dir = args[i + 1];
             }
             if (mode == null) return;
@@ -38,8 +40,9 @@ namespace Arena
             yield return null;
             if (mode == "gallery") yield return Gallery();
             else if (mode == "gifts") yield return Gifts();
+            else if (mode == "review") yield return Review();
             else yield return Auto();
-            Application.Quit();
+            Application.Quit(failures > 0 ? 1 : 0);
         }
 
         void Shot(string name)
@@ -47,6 +50,120 @@ namespace Arena
             var p = Path.Combine(dir, name + ".png");
             ScreenCapture.CaptureScreenshot(p);
             Debug.Log("[AutoTest] shot " + p);
+        }
+
+        void Check(bool pass, string description)
+        {
+            if (pass) Debug.Log("[Review] PASS " + description);
+            else { failures++; Debug.LogError("[Review] FAIL " + description); }
+        }
+
+        Viewer Event(string id, string nickname, string type, int coins = 0, int count = 1)
+        {
+            GameManager.I.Router.Handle(new ViewerEvent { type = type, userId = "review:" + id, nickname = nickname, coins = coins, count = count, giftName = coins > 0 ? "Review" : null });
+            return GameManager.I.Registry.Find("review:" + id);
+        }
+
+        void Pose(Viewer v, float x, float z)
+        {
+            var gm = GameManager.I;
+            var p = gm.World.CamRightFlat * x + gm.World.CamForwardFlat * z;
+            var f = v.fighter;
+            f.state = FState.Idle;
+            f.motor.Place(p, Quaternion.LookRotation(-gm.World.CamForwardFlat).eulerAngles.y);
+            f.anim.Play(FighterAnimation.Loco, 0.05f);
+            f.nameVisibleUntil = Time.time + 999;
+        }
+
+        // Deterministic player-level regression test, isolated with -test-data and -bridge-url.
+        IEnumerator Review()
+        {
+            var gm = GameManager.I;
+            var cfg = GameConfig.Current;
+            cfg.round.prepSec = 0;
+            cfg.bots.fillWhenTotalBelow = 0;
+            DevKeys.I.traffic = false;
+            yield return null;
+            gm.Paused = true;
+            gm.Fighters.DespawnAll();
+            var plain = Event("plain", "Starter", "comment");
+            Pose(plain, -2.8f, -1.4f);
+            Check(plain.fighter != null && Gear.SupportLevel(plain) == 0 && Gear.GiftLevel(plain) == 0 && plain.fighter.gearParts.Count == 0, "newcomer starts plain");
+            var support = Event("support", "Supporter", "like");
+            for (int i = 0; i < cfg.levels.commentsL2; i++) Event("support", "Supporter", "comment");
+            Pose(support, -0.9f, -1.4f);
+            Check(Gear.SupportLevel(support) == 2 && support.fighter.gearSupport == 2, "comments unlock supporter outfit");
+            var hero = Event("hero", "Hero", "comment");
+            for (int i = 1; i < cfg.levels.commentsL3; i++) Event("hero", "Hero", "comment");
+            Pose(hero, 0.9f, -1.4f);
+            for (int i = 0; i < cfg.levels.giftCoins.Length; i++)
+            {
+                var v = Event("gift" + i, "Gift " + (i + 1), "gift", cfg.levels.giftCoins[i]);
+                Pose(v, (i - 2) * 1.65f, 2.4f);
+                Check(Gear.GiftLevel(v) == i + 1 && v.fighter.gearGift == i + 1, "gift outfit stage " + (i + 1));
+                v.record.points = (i + 1) * 10;
+            }
+            gm.Board.MarkDirty();
+            yield return new WaitForSeconds(3);
+            Shot("review_00_progression");
+            int unsupported = 0;
+            foreach (var f in gm.Fighters.Active)
+                foreach (var r in f.GetComponentsInChildren<Renderer>(true))
+                    foreach (var m in r.sharedMaterials)
+                        if (m == null || m.shader == null || !m.shader.isSupported || m.shader.name.Contains("InternalError")) unsupported++;
+            Check(unsupported == 0, "all model and gear material shaders supported");
+            Vector3 boardPos = gm.Board.transform.position;
+            yield return new WaitForSeconds(3);
+            Check(Vector3.Distance(boardPos, gm.Board.transform.position) < 0.001f, "scoreboard stays fixed while camera moves");
+
+            var fast = Event("fast", "Gift Return", "comment");
+            Pose(fast, 2.7f, -1.4f);
+            fast.fighter.Die(null, MoveKind.None);
+            Event("fast", "Gift Return", "comment");
+            Check(fast.state == ViewerState.Dead, "comment cannot bypass death cooldown");
+            Check(Mathf.Abs(fast.deadUntil - fast.diedAt - 60) < 0.1f, "death cooldown is sixty seconds");
+            yield return new WaitForSeconds(2.5f);
+            if (fast.fighter != null) fast.fighter.Tick(0.01f, Time.time);
+            yield return new WaitForSeconds(1);
+            Shot("review_01_gravestone");
+            Check(gm.Graves.Count == 1, "death places a gravestone");
+            Event("fast", "Gift Return", "gift", 1);
+            Check(fast.fighter != null && fast.fighter.IsAlive && gm.Graves.Count == 0, "gift revives immediately and removes stone");
+            Check(fast.fighter.specials.Busy || fast.fighter.specials.Queued > 0, "revival keeps the gift move");
+            Pose(fast, 2.7f, -1.4f);
+            var waiting = Event("wait", "Free Return", "comment");
+            Pose(waiting, 0, 0.2f);
+            waiting.fighter.Die(null, MoveKind.None);
+            float until = waiting.deadUntil;
+            yield return new WaitForSeconds(3);
+            if (waiting.fighter != null) waiting.fighter.Tick(0.01f, Time.time);
+            yield return new WaitForSeconds(1);
+            Shot("review_02_return_bar");
+            while (Time.time < until - 0.1f)
+            {
+                gm.Roster.Tick(Time.time, Time.deltaTime);
+                yield return null;
+            }
+            Check(waiting.fighter == null || !waiting.fighter.IsAlive, "free return cannot happen before sixty seconds");
+            yield return new WaitForSeconds(0.2f);
+            gm.Roster.Tick(Time.time, 0.02f);
+            Check(waiting.fighter != null && waiting.fighter.IsAlive && gm.Graves.Count == 0, "free player automatically returns after sixty seconds");
+            Shot("review_03_free_return");
+            var external = gm.Registry.Find("manual:BridgeReview");
+            Check(gm.Bridge.Connected && external != null && external.streamCoins == 30 && external.fighter != null && external.fighter.IsAlive, "HTTP bridge gift reaches real Unity player");
+            waiting.fighter.Die(null, MoveKind.None);
+            float nextReturn = waiting.deadUntil;
+            gm.Command("endRound", null);
+            var finalGift = Event("final", "Final Gift", "gift", 30);
+            Check(finalGift.pendingGifts.Count == 1 && (finalGift.fighter == null || !finalGift.fighter.IsAlive), "final phase defers gift without losing it");
+            gm.Command("endRound", null);
+            cfg.round.winnerSec = 0.01f;
+            gm.Paused = false;
+            yield return new WaitForSeconds(3);
+            Check(waiting.state == ViewerState.Dead && waiting.deadUntil == nextReturn && (waiting.fighter == null || !waiting.fighter.IsAlive), "new round preserves unfinished death cooldown");
+            Check(finalGift.fighter != null && finalGift.fighter.IsAlive && finalGift.pendingGifts.Count == 0, "deferred gift enters in next round");
+            Debug.Log("[Review] completed failures=" + failures);
+            yield return new WaitForSeconds(1);
         }
 
         IEnumerator Auto()
@@ -147,9 +264,11 @@ namespace Arena
                 {
                     var v = gm.Registry.Find("dev:berk");
                     f = v?.fighter;
+                    if (f != null && tiers[i].move == "Giant" && f.specials.Giant != null) break;
                     if (f != null && f.specials.Current != null && f.specials.Current.kind.ToString() == tiers[i].move) break;
                     yield return null;
                 }
+                Check(f != null && (tiers[i].move == "Giant" ? f.specials.Giant != null : f.specials.Current != null && f.specials.Current.kind.ToString() == tiers[i].move), "gift move runs " + tiers[i].move);
                 for (int k = 0; k < 4; k++)
                 {
                     yield return new WaitForSeconds(k == 0 ? 0.35f : 0.7f);

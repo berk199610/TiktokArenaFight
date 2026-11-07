@@ -22,6 +22,9 @@ namespace Arena
         public RigInfo info;
         public readonly List<Renderer> accessoryRenderers = new List<Renderer>();
         public readonly List<Color> accessoryColors = new List<Color>();
+        public readonly List<Renderer> outfitRenderers = new List<Renderer>();
+        public readonly List<Material[]> outfitMaterials = new List<Material[]>();
+        public readonly List<bool[]> outfitSkinSlots = new List<bool[]>();
         public Transform crown;      // round top gifter crown (shown/hidden)
         public Transform weaponRoot; // bat / shovel
     }

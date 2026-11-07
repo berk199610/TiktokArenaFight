@@ -26,6 +26,7 @@ namespace Arena
         public Nameplates Names;
         public EmoteSystem Emotes;
         public LeaderboardPanel Board;
+        public RespawnMarkers Graves;
         public BridgeClient Bridge;
 
         public RoundState State { get; private set; }
@@ -43,6 +44,7 @@ namespace Arena
         bool top10Awarded;
         Fighter lastDied;
         float lastConfettiAt;
+        float nextRankLook;
         static GameConfig Cfg => GameConfig.Current;
 
         public float SafeRadius => Ring != null && Ring.Active ? Ring.Radius : Cfg.arena.radius;
@@ -82,6 +84,9 @@ namespace Arena
                                       "angry", "tired", "sneaky", "laugh", "cool", "scared", "dizzy", "love", "starstruck", "happy" })
                 Icons.Get(n);
             Board = LeaderboardPanel.Create(transform);
+            StadiumSigns.Create(World.root);
+            Graves = new GameObject("RespawnMarkers").AddComponent<RespawnMarkers>();
+            Graves.transform.SetParent(World.root, false);
             var uiGo = new GameObject("UI");
             uiGo.transform.SetParent(transform, false);
             Hud = uiGo.AddComponent<Hud>();
@@ -91,7 +96,10 @@ namespace Arena
             Emotes = uiGo.AddComponent<EmoteSystem>();
             Emotes.Init();
 
-            Bridge = new BridgeClient(Cfg.bridge.url, Cfg.bridge.reconnectSec);
+            string bridgeUrl = Cfg.bridge.url;
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < args.Length; i++) if (args[i] == "-bridge-url") bridgeUrl = args[i + 1];
+            Bridge = new BridgeClient(bridgeUrl, Cfg.bridge.reconnectSec);
             gameObject.AddComponent<DevKeys>();
             AutoTest.MaybeStart(gameObject);
         }
@@ -113,6 +121,7 @@ namespace Arena
             float now = Time.time;
             GameConfig.HotReloadTick();
             PumpBridge();
+            RefreshRankLooks();
             if (Paused) return;
 
             Roster.Tick(now, dt);
@@ -239,6 +248,7 @@ namespace Arena
         public void OnFighterEntered(Fighter f)
         {
             f.nameVisibleUntil = Time.time + Cfg.names.showSec;
+            Graves?.Remove(f.viewer);
         }
 
         public void OnFighterKilled(Fighter victim, Fighter killer, MoveKind move)
@@ -246,6 +256,7 @@ namespace Arena
             float now = Time.time;
             lastDied = victim;
             Roster.OnFighterDied(victim, now);
+            if (!victim.IsBot) Graves?.Show(victim.viewer, victim.Pos, now);
             var vr = victim.viewer?.record;
             if (vr != null && !victim.IsBot) vr.deaths++;
             if (killer != null && killer != victim && killer.viewer != null && killer.viewer.record != null)
@@ -269,6 +280,7 @@ namespace Arena
             // crown: the top gifter of this round (doc §4)
             if (TopGifter == null || v.roundCoins > TopGifter.roundCoins) TopGifter = v;
             Board?.MarkDirty();
+            Cam?.OnGift(v.fighter, totalCoins);
         }
 
         void UpdateGifterLooks()
@@ -277,6 +289,34 @@ namespace Arena
             {
                 if (!f.IsAlive || f.state == FState.Victory) continue;
                 f.SetGifterLook(f.IsGifter, f.viewer == TopGifter && TopGifter != null);
+            }
+        }
+
+        static bool RanksBefore(ViewerRecord a, ViewerRecord b)
+        {
+            if (b == null) return true;
+            if (a.points != b.points) return a.points > b.points;
+            if (a.kills != b.kills) return a.kills > b.kills;
+            return string.Compare(a.nickname, b.nickname, System.StringComparison.CurrentCulture) < 0;
+        }
+
+        void RefreshRankLooks()
+        {
+            if (Time.time < nextRankLook) return;
+            nextRankLook = Time.time + 0.75f;
+            ViewerRecord first = null, second = null, third = null;
+            foreach (var r in ScoreRecords())
+            {
+                if (r.points <= 0 || string.IsNullOrEmpty(r.nickname)) continue;
+                if (RanksBefore(r, first)) { third = second; second = first; first = r; }
+                else if (RanksBefore(r, second)) { third = second; second = r; }
+                else if (RanksBefore(r, third)) third = r;
+            }
+            foreach (var f in Fighters.Active)
+            {
+                if (!f.IsAlive) continue;
+                var r = f.viewer?.record;
+                Gear.SetRank(f, r != null && r == first ? 1 : r != null && r == second ? 2 : r != null && r == third ? 3 : 0);
             }
         }
 

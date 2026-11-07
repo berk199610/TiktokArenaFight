@@ -44,8 +44,10 @@
   },
   "death": {
     "lieSec": 2,
-    "penaltySec": 3,
-    "reviveMinHp": 500
+    "penaltySec": 60,
+    "reviveMinHp": 500,
+    "markerHeight": 0.85,
+    "markerWidth": 0.62
   },
   "bots": {
     "startCount": 4,
@@ -333,19 +335,23 @@
     "yawDeg": 45,
     "fov": 45,
     "minDistance": 16.5,
-    "maxDistance": 21.5,
+    "maxDistance": 23,
     "spreadForMax": 7,
-    "followSec": 1.5,
-    "maxOffsetFromCenter": 6,
-    "giftNudgeWeight": 6,
+    "followSec": 1.8,
+    "maxOffsetFromCenter": 3,
+    "giftNudgeWeight": 2,
     "giftNudgeMinCoins": 100,
     "lookAhead": 3.5,
-    "maxOffsetForward": 3,
-    "zoomSec": 3,
-    "breathAmp": 1.0,
-    "breathPeriodSec": 24,
-    "maxFocusSpeed": 2.5,
-    "maxZoomSpeed": 1.2
+    "maxOffsetForward": 1.5,
+    "zoomSec": 4,
+    "breathAmp": 0.4,
+    "breathPeriodSec": 28,
+    "maxFocusSpeed": 1.4,
+    "maxZoomSpeed": 0.7,
+    "restingDistanceOffset": 1.5,
+    "giftZoomAmount": 0.65,
+    "giftZoomSec": 3.5,
+    "giftZoomMinCoins": 1000
   },
   "vigor": {
     "maxBulk": 1.22,
@@ -362,11 +368,14 @@
     "trafficEventsPerSec": 6
   },
   "board": {
-    "rows": 10,
+    "rows": 5,
     "screenY": 0.745,
     "heightFrac": 0.255,
     "depth": 30,
-    "tiltDeg": 10
+    "tiltDeg": 10,
+    "distanceBehind": -2.5,
+    "height": 2.2,
+    "scale": 0.9
   },
   "levels": {
     "likesL1": 20,
