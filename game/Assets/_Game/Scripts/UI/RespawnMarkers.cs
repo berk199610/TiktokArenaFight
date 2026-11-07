@@ -13,7 +13,8 @@ namespace Arena
             public Transform root;
             public RectTransform face;
             public Image fill, gift;
-            public Text name;
+            public Text name, secs;
+            public RectTransform bubble;
             public float showAt;
         }
 
@@ -91,7 +92,24 @@ namespace Arena
             var person = Ui.Image(face, "Return", Icons.Get("person"), new Color(0.4f, 1f, 0.72f));
             person.rectTransform.anchoredPosition = new Vector2(51, -61);
             person.rectTransform.sizeDelta = new Vector2(48, 48);
-            return new Marker { root = rt, face = face, fill = fill, gift = gift, name = label };
+            var secs = Ui.Text(track.transform, "Seconds", "", 26, Color.white, TextAnchor.MiddleCenter, Ui.FontBlack);
+            Ui.Stretch(secs.rectTransform);
+            // floating bubble above the stone: gift -> back now (pulses so viewers notice it)
+            var bubble = Ui.Rect(face, "GiftBubble");
+            bubble.anchoredPosition = new Vector2(0, 205);
+            bubble.sizeDelta = new Vector2(230, 120);
+            var bbg = Ui.Image(bubble, "Bg", Ui.Rounded, new Color(0.08f, 0.06f, 0.12f, 0.85f));
+            Ui.Stretch(bbg.rectTransform);
+            var bGift = Ui.Image(bubble, "Gift", Icons.Get("gift"), Color.white);
+            bGift.rectTransform.anchoredPosition = new Vector2(-62, 0);
+            bGift.rectTransform.sizeDelta = new Vector2(90, 90);
+            var bArrow = Ui.Text(bubble, "Arrow", ">", 64, Color.white, TextAnchor.MiddleCenter, Ui.FontBlack, false);
+            bArrow.rectTransform.anchoredPosition = new Vector2(4, 2);
+            bArrow.rectTransform.sizeDelta = new Vector2(40, 90);
+            var bUp = Ui.Image(bubble, "Up", Icons.Get("arrowUp"), Color.white);
+            bUp.rectTransform.anchoredPosition = new Vector2(66, 0);
+            bUp.rectTransform.sizeDelta = new Vector2(76, 76);
+            return new Marker { root = rt, face = face, fill = fill, gift = gift, name = label, secs = secs, bubble = bubble };
         }
 
         static Sprite white;
@@ -124,6 +142,13 @@ namespace Arena
                 m.face.localRotation = Quaternion.identity;
                 m.fill.fillAmount = Mathf.Clamp01((now - v.diedAt) / Mathf.Max(0.1f, v.deadUntil - v.diedAt));
                 m.gift.color = gm.GiftEntryOpen ? new Color(1f, 0.82f, 0.28f) : new Color(0.55f, 0.55f, 0.55f);
+                int left = Mathf.Max(0, Mathf.CeilToInt(v.deadUntil - now));
+                string ls = left > 0 ? left.ToString() : "";
+                if (m.secs.text != ls) m.secs.text = ls;
+                m.bubble.gameObject.SetActive(gm.GiftEntryOpen);
+                float pulse = 1f + Mathf.Sin(now * 5f + m.root.position.x) * 0.08f;
+                m.bubble.localScale = Vector3.one * pulse;
+                m.bubble.anchoredPosition = new Vector2(0, 205 + Mathf.Sin(now * 2.5f) * 8f);
             }
         }
     }

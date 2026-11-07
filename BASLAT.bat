@@ -47,10 +47,10 @@ rem ---- 2) Yayinci paneli (tarayicida)
 start "" "http://localhost:8788"
 
 rem ---- 3) Oyun penceresi (608x1080, cercevesiz, ekranin sag kenarinda)
-if exist "Builds\Windows\ArenaDovusu.exe" (
-  start "" "Builds\Windows\ArenaDovusu.exe" -popupwindow
+if exist "Builds\Windows\Arena Dovusu.exe" (
+  start "" "Builds\Windows\Arena Dovusu.exe" -popupwindow
 ) else (
-  echo [UYARI] Oyun henuz derlenmemis: Builds\Windows\ArenaDovusu.exe yok.
+  echo [UYARI] Oyun henuz derlenmemis: Builds\Windows\Arena Dovusu.exe yok.
   echo Unity'de Arena ^> Windows icin derle menusunu calistirin.
   pause
 )

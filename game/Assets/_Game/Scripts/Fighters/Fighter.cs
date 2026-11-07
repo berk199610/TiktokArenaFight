@@ -357,7 +357,6 @@ namespace Arena
                 float t = Mathf.Clamp01((big - cc.launchPoise) / 150f);
                 poise = 0f;
                 Launch(dir, Mathf.Lerp(cc.launchMinBack, cc.launchMaxBack, t), Mathf.Lerp(cc.launchMinUp, cc.launchMaxUp, t));
-                if (Random.value < 0.4f) GameManager.I.Emotes?.Show(this, hp < Cfg.health.lowHp ? "scared" : "dizzy");
             }
             else if (poise >= cc.knockdownPoise || (hp < Cfg.health.veryLowHp && impact >= cc.staggerImpact && Random.value < Cfg.health.veryLowKnockdownChance))
             {
@@ -374,15 +373,13 @@ namespace Arena
                 int st = local.z < -0.45f ? FighterAnimation.HitBig : local.x > 0f ? FighterAnimation.StaggerR : FighterAnimation.StaggerL;
                 anim.Play(st, 0.05f);
                 motor.AddPush(dir * (h.push * 0.5f + impact / 22f));
-                if (Random.value < 0.25f) GameManager.I.Emotes?.Show(this, hp < Cfg.health.lowHp ? "scared" : "angry");
             }
             else
             {
                 anim.PlayHit(Random.value < 0.5f);
                 motor.AddPush(dir * (cc.lightPush + impact / 40f));
-                if (impact > 12f && Random.value < 0.06f) GameManager.I.Emotes?.Show(this, "angry");
             }
-            if (hp < Cfg.health.lowHp && now - lastEmoteHelpAt > 9f && Random.value < 0.3f)
+            if (!IsBot && hp < Cfg.health.lowHp && now - lastEmoteHelpAt > 25f && Random.value < 0.35f)
             {
                 lastEmoteHelpAt = now;
                 GameManager.I.Emotes?.Show(this, "sos", true);

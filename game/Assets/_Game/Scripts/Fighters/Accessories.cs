@@ -151,9 +151,48 @@ namespace Arena
         static Material MatFor(Color c) => c.a < 0.99f ? Mats.Fx(false, Texture2D.whiteTexture, c) : Mats.Lit(c);
 
         /// <summary>Holder placed in body space, then re-parented to a bone (keeps the pose).</summary>
+        struct RestPose { public Matrix4x4 bodyToBone; public Vector3 posInBody; public Quaternion rotInBody; public Vector3 scaleRatio; }
+        static readonly Dictionary<Transform, RestPose> rest = new Dictionary<Transform, RestPose>();
+
+        /// <summary>
+        /// Remember where each bone sits in the idle pose (once, when the fighter is built). Gear added later
+        /// (level ups, weapons, medals) is attached with these numbers, so it sits right even when the character
+        /// is running, punching or lying on the ground at that moment (it used to float away from the body).
+        /// </summary>
+        public static void CaptureRest(Transform body, params Transform[] bones)
+        {
+            foreach (var b in bones)
+            {
+                if (b == null) continue;
+                var bl = b.lossyScale; var dl = body.lossyScale;
+                rest[b] = new RestPose
+                {
+                    bodyToBone = b.worldToLocalMatrix * body.localToWorldMatrix,
+                    posInBody = body.InverseTransformPoint(b.position),
+                    rotInBody = Quaternion.Inverse(body.rotation) * b.rotation,
+                    scaleRatio = new Vector3(bl.x / dl.x, bl.y / dl.y, bl.z / dl.z),
+                };
+            }
+        }
+
+        /// <summary>Position of a bone in body space in the idle pose (falls back to the current pose).</summary>
+        public static Vector3 RestPosition(Transform body, Transform bone)
+        {
+            if (bone != null && rest.TryGetValue(bone, out var r)) return r.posInBody;
+            return bone != null ? body.InverseTransformPoint(bone.position) : Vector3.zero;
+        }
+
         public static Transform Holder(string name, Transform body, Vector3 bodyPos, Transform bone)
         {
             var h = new GameObject(name).transform;
+            if (bone != null && rest.TryGetValue(bone, out var r))
+            {
+                h.SetParent(bone, false);
+                h.localPosition = r.bodyToBone.MultiplyPoint3x4(bodyPos);
+                h.localRotation = Quaternion.Inverse(r.rotInBody);
+                h.localScale = new Vector3(1f / r.scaleRatio.x, 1f / r.scaleRatio.y, 1f / r.scaleRatio.z);
+                return h;
+            }
             h.SetParent(body, false);
             h.localPosition = bodyPos;
             h.localRotation = Quaternion.identity;
@@ -398,11 +437,8 @@ namespace Arena
         public static Transform BuildWeapon(MoveKind kind, FighterRig rig, Transform body)
         {
             if (rig.handR == null) return null;
-            var root = new GameObject(kind + "Weapon").transform;
-            root.SetParent(body, false);
-            root.position = rig.handR.position;
-            root.localRotation = Quaternion.identity; // aligned with the character: forward = +Z
-            root.SetParent(rig.handR, true);
+            // aligned with the character (forward = +Z) as in the idle pose, whatever the hand is doing right now
+            var root = Holder(kind + "Weapon", body, RestPosition(body, rig.handR), rig.handR);
             float h = rig.info.height;
             var tmp = new FighterRig { info = rig.info };
             if (kind == MoveKind.Bat)

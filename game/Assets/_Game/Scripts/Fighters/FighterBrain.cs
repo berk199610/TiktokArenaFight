@@ -106,7 +106,6 @@ namespace Arena
             float perc = ai.perceptionRadius * (gm.State == RoundState.Final || gm.Fighters.AliveCount <= 8 ? 2.5f : 1f);
             gm.Fighters.Query(f.Pos, perc, near, f);
             options.Clear();
-            if (f.inactive && Random.value < 0.03f) GameManager.I.Emotes?.Show(f, "tired");
 
             // threats: an enemy winding up a kick at me -> side-step (smart only)
             float dodge = DodgeChance();
@@ -251,8 +250,6 @@ namespace Arena
                     SetTarget(t);
                     planUntil = now + (p == Plan.Strafe ? Random.Range(0.8f, 1.6f) : 6f);
                     if (p == Plan.Strafe && Random.value < 0.3f) strafeSign = -strafeSign;
-                    if (p == Plan.Revenge && Random.value < 0.4f) GameManager.I.Emotes?.Show(f, "angry");
-                    else if (p == Plan.Attack && t != null && t.Hp01 < 0.35f && (f.personality == PersonalityType.Opportunist || Random.value < 0.3f)) GameManager.I.Emotes?.Show(f, "sneaky");
                     break;
                 case Plan.Taunt:
                     lastTauntAt = now;
@@ -260,7 +257,6 @@ namespace Arena
                     f.state = FState.Taunting;
                     bool dance = f.personality == PersonalityType.Showman && Random.value < 0.6f;
                     f.anim.Play(dance ? FighterAnimation.Dance : Random.value < 0.5f ? FighterAnimation.Yes : FighterAnimation.Cocky, 0.12f);
-                    GameManager.I.Emotes?.Show(f, dance ? "laugh" : Random.value < 0.5f ? "cool" : "laugh");
                     f.stateUntil = now + (dance ? 1.8f : 1.2f);
                     f.motor.Stop();
                     plan = Plan.None;
@@ -274,7 +270,6 @@ namespace Arena
                     f.state = FState.Dizzy;
                     f.stateUntil = now + Random.Range(1.8f, 3.5f);
                     f.anim.Play(FighterAnimation.Dizzy, 0.2f);
-                    GameManager.I.Emotes?.Show(f, "dizzy");
                     f.motor.Stop();
                     plan = Plan.None;
                     break;
@@ -302,7 +297,6 @@ namespace Arena
                 case Plan.Retreat:
                     ClearTarget();
                     planUntil = now + 1.2f;
-                    if (Random.value < 0.35f) GameManager.I.Emotes?.Show(f, "scared");
                     break;
                 case Plan.Center:
                     ClearTarget();

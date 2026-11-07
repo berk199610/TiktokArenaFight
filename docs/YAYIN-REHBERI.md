@@ -17,9 +17,9 @@ Bunları senin yapman gerekiyor (TikTok hesabına ve TikTok LIVE Studio'ya ben e
       **Arena Dovusu** penceresini seç.
    3. Görüntüyü köşelerinden çekerek tüm dikey alanı kaplayacak şekilde büyüt.
    4. **Canlı yayını başlat.**
-3. **Panelde** "TikTok LIVE bağlantısı" kutusuna TikTok kullanıcı adını yaz (@ olmadan) ve
-   **TikTok LIVE'a bağlan**'a bas. Durum yazısı **"bağlı (@kullaniciadin)"** olmalı.
-   Kullanıcı adı kaydedilir; sonraki yayınlarda BASLAT.bat'tan sonra kendiliğinden bağlanır.
+3. **Bağlantı kendiliğinden kurulur:** kullanıcı adın (@generalobento) kayıtlı. Yayını başlattıktan sonra en geç
+   1 dakika içinde panelde durum **"bağlı (@generalobento)"** olur. Başka hesapla yayın yapacaksan panelde adı değiştirip
+   **TikTok LIVE'a bağlan**'a bas.
 4. **Kontrol et** (telefondan ya da başka bir hesaptan):
    - bir **yorum** yaz → karakterin bir kapıdan arenaya girmeli,
    - **beğen** → karakterin üstünde "+1" çıkmalı,

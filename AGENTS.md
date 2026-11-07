@@ -32,9 +32,9 @@ UNITY="/c/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Unity.exe"
 "$UNITY" -batchmode -quit -projectPath "C:/Projeler/TiktokArenaFight/game" -executeMethod Arena.EditorTools.BuildScript.SetupAndBuild -logFile _test-output/build.log
 "$UNITY" -batchmode -quit -projectPath "C:/Projeler/TiktokArenaFight/game" -executeMethod Arena.EditorTools.BuildScript.BuildWindows -logFile _test-output/build.log
 # visual checks (screenshots to the folder, then quits)
-Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -screen-fullscreen 0 -autotest 60 -shots C:/Projeler/TiktokArenaFight/_test-output/auto
-Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -screen-fullscreen 0 -gallery -shots C:/Projeler/TiktokArenaFight/_test-output/gallery
-Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -screen-fullscreen 0 -gifts -shots C:/Projeler/TiktokArenaFight/_test-output/gifts
+"Builds/Windows/Arena Dovusu.exe" -screen-width 608 -screen-height 1080 -screen-fullscreen 0 -autotest 60 -shots C:/Projeler/TiktokArenaFight/_test-output/auto
+"Builds/Windows/Arena Dovusu.exe" -screen-width 608 -screen-height 1080 -screen-fullscreen 0 -gallery -shots C:/Projeler/TiktokArenaFight/_test-output/gallery
+"Builds/Windows/Arena Dovusu.exe" -screen-width 608 -screen-height 1080 -screen-fullscreen 0 -gifts -shots C:/Projeler/TiktokArenaFight/_test-output/gifts
 tools/node/node.exe bridge/src/server.js
 curl -s -X POST localhost:8788/api/sim -d '{"action":"viewers","value":40}'
 ```
@@ -53,6 +53,13 @@ Runtime regression: `-review -test-data <isolated-folder> -bridge-url ws://127.0
 Wait for the review fixture and socket before injecting the `BridgeReview` 30-coin simulator gift.
 The latest user decisions in `docs/TASARIM-NOTLARI.md` supersede older PDF rules (plain starter, TOP 5,
 physical signs, sixty-second death cooldown). Always isolate automated tests from real viewer records.
+
+While a stream is running the live game blocks a second copy (single instance) and must not be closed. Build a
+side-by-side copy with `-executeMethod Arena.EditorTools.BuildScript.BuildWindows -testBuild -buildPath <dir>/ArenaTest.exe`
+(own product name, no single-instance lock), point its `StreamingAssets/config.json` bridge url to an unused port and run
+it with `-test-data <dir>` so the real viewer records are untouched. Release: `-buildPath "<dir>/Arena Dovusu.exe"`, then
+copy to `Builds/Windows` and to the desktop folder `OneDrive/Desktop/TiktokLive/TikTokLiveArenaFight` (only the game files).
+Gear added at runtime is attached with the idle-pose bone data from `Accessories.CaptureRest` (otherwise it floats).
 
 ## Conventions
 - C# 9 max. No per-frame allocations in hot paths (static lists, pools). Brains think every 0.2–0.4 s, staggered.

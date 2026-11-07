@@ -87,7 +87,6 @@ namespace Arena
                     float before = f.hp;
                     f.hp -= rc.ringDps * dt;
                     if (Random.value < dt * 4f) Fx.I.FireBurst(f.Pos);
-                    if (Random.value < dt * 0.5f) GameManager.I.Emotes?.Show(f, "fire");
                     if (f.hp <= 0f && before > 0f) { f.hp = 0f; f.Die(f.lastHitBy != null && now - f.lastHitTime < 4f ? f.lastHitBy : null, MoveKind.None); }
                 }
             }

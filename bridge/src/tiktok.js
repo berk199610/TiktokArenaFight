@@ -166,7 +166,7 @@ export class TikTokProvider {
       const n = err && (err.name || err.constructor?.name) || '';
       if (n.includes('UserOffline')) this.status = `@${this.username} şu an canlı yayında değil (yayını başlatınca kendiliğinden bağlanır)`;
       else if (n.includes('RateLimit')) this.status = 'imza sunucusu sınırı doldu, biraz sonra tekrar denenecek';
-      else if (/room id/i.test(String(err && err.message))) this.status = `@${this.username} şu an canlı yayında değil ya da kullanıcı adı yanlış. Önce TikTok LIVE Studio'da yayını başlat; köprü kendiliğinden tekrar dener.`;
+      else if (/room id|isn.t online|not online|offline/i.test(String(err && err.message))) this.status = `@${this.username} şu an canlı yayında değil ya da kullanıcı adı yanlış. Önce TikTok LIVE Studio'da yayını başlat; köprü kendiliğinden tekrar dener.`;
       else this.status = 'bağlanamadı: ' + (err && err.message ? err.message : String(err));
       this.log('TikTok bağlanamadı:', this.status);
       this.retry();

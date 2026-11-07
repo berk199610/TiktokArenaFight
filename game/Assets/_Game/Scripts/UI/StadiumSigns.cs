@@ -41,8 +41,11 @@ namespace Arena
             commentValue = Label(left, "CommentHp", "", 69, -67, 77, 144, 96);
             Divider(left);
 
-            var right = Face("GiftPlacard", back + world.CamRightFlat * 3.9f + Vector3.up * bc.height,
-                new Color(0.95f, 0.76f, 0.28f));
+            // The hanging Flags mesh projects well inside the nominal wall radius. Place this face on a
+            // longer fixed terrace bracket: its whole rectangle clears the cloth across camera movement.
+            // Checked against the actual model meshes at 44 camera poses (25 points per face).
+            var giftAnchor = world.CamForwardFlat * 8.3f + world.CamRightFlat * 3.9f + Vector3.up * bc.height;
+            var right = Face("GiftPlacard", giftAnchor, new Color(0.95f, 0.76f, 0.28f), worldWidth: 1.9f);
             Icon(right, "GiftHealth", "gift", -112, 65, 78);
             Label(right, "HealthArrow", ">", -28, 66, 57, 50, 75);
             Icon(right, "HealthHeart", "heart", 61, 77, 64);
@@ -58,10 +61,38 @@ namespace Arena
             var rise = Ui.Image(right, "InstantReturn", Icons.Get("arrowUp"), new Color(0.3f, 1f, 0.6f));
             Place(rise.rectTransform, 126, -77, 41, 54);
 
-            BuildGiftMoves(world);
+            BuildFollowBanner(world);
             UpdateValues();
             GameConfig.Reloaded += UpdateValues;
         }
+
+        /// <summary>
+        /// "FOLLOW · NEW GAME EVERY DAY" strip sitting on top of the TOP 5 board (the back of the arena), with the
+        /// follow icon so it reads without English.
+        /// </summary>
+        void BuildFollowBanner(ArenaWorld world)
+        {
+            var board = GameManager.I != null ? GameManager.I.Board : null;
+            if (board == null) return;
+            var strip = Ui.Rect(board.transform, "FollowBanner");
+            strip.anchorMin = strip.anchorMax = new Vector2(0.5f, 1f);
+            strip.pivot = new Vector2(0.5f, 0f);
+            strip.anchoredPosition = new Vector2(0, 16);
+            strip.sizeDelta = new Vector2(700, 84);
+            var rim = Ui.Image(strip, "Rim", Ui.Rounded, new Color(1f, 0.8f, 0.25f));
+            Ui.Stretch(rim.rectTransform);
+            var bg = Ui.Image(strip, "Bg", Ui.Rounded, new Color(0.85f, 0.12f, 0.35f));
+            Ui.Stretch(bg.rectTransform, 4);
+            var icon = Ui.Image(strip, "FollowIcon", Icons.Get("follow"), Color.white);
+            Place(icon.rectTransform, -300, 0, 70, 70);
+            var big = Ui.Text(strip, "Follow", "FOLLOW", 52, Color.white, TextAnchor.MiddleLeft, Ui.FontBlack);
+            Place(big.rectTransform, -150, 0, 200, 80);
+            var small = Ui.Text(strip, "Daily", "NEW GAME EVERY DAY", 34, new Color(1f, 0.92f, 0.6f), TextAnchor.MiddleLeft, Ui.FontBlack);
+            Place(small.rectTransform, 105, 0, 330, 80);
+            followStrip = strip;
+        }
+
+        RectTransform followStrip;
 
         void BuildGiftMoves(ArenaWorld world)
         {
@@ -195,6 +226,7 @@ namespace Arena
             var tiers = GameConfig.Current.gifts.tiers;
             for (int i = 0; i < tierCells.Length; i++)
             {
+                if (tierCells[i] == null) continue;
                 bool visible = tiers != null && i < tiers.Length;
                 tierCells[i].gameObject.SetActive(visible);
                 if (!visible) continue;
@@ -215,6 +247,7 @@ namespace Arena
             if (cam == null) return;
             foreach (var face in faces)
                 face.rotation = Quaternion.LookRotation(face.position - cam.transform.position, Vector3.up);
+            if (followStrip != null) followStrip.localScale = Vector3.one * (1f + Mathf.Sin(Time.time * 2f) * 0.025f);
         }
 
         void OnDestroy() => GameConfig.Reloaded -= UpdateValues;

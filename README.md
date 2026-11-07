@@ -168,12 +168,12 @@ BASLAT.bat                köprü + panel + oyun
 ## Komutlar (geliştirici)
 ```bash
 UNITY="/c/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Unity.exe"
-# kurulum (rig, animasyonlar, Animator, sahne) + Windows derlemesi -> Builds/Windows/ArenaDovusu.exe
+# kurulum (rig, animasyonlar, Animator, sahne) + Windows derlemesi -> "Builds/Windows/Arena Dovusu.exe"
 "$UNITY" -batchmode -quit -projectPath "C:/Projeler/TiktokArenaFight/game" -executeMethod Arena.EditorTools.BuildScript.SetupAndBuild -logFile _test-output/build.log
 # otomatik testler (ekran görüntüleri _test-output altına)
-Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -autotest 60 -shots C:/Projeler/TiktokArenaFight/_test-output/auto
-Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -gallery -shots C:/Projeler/TiktokArenaFight/_test-output/gallery
-Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -gifts -shots C:/Projeler/TiktokArenaFight/_test-output/gifts
+"Builds/Windows/Arena Dovusu.exe" -screen-width 608 -screen-height 1080 -autotest 60 -shots C:/Projeler/TiktokArenaFight/_test-output/auto
+"Builds/Windows/Arena Dovusu.exe" -screen-width 608 -screen-height 1080 -gallery -shots C:/Projeler/TiktokArenaFight/_test-output/gallery
+"Builds/Windows/Arena Dovusu.exe" -screen-width 608 -screen-height 1080 -gifts -shots C:/Projeler/TiktokArenaFight/_test-output/gifts
 ```
 Unity editörü projeyi açıkken batch komutları çalışmaz (proje kilidi) — önce editörü kapatın.
 

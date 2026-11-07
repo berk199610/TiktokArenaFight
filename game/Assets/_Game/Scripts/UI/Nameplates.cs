@@ -19,6 +19,8 @@ namespace Arena
             public Image barBg, bar;
             public Text status;
             public Image plus;
+            public Image level;
+            public Text levelText;
         }
 
         class Floater { public Text t; public Vector3 world; public float start; }
@@ -83,6 +85,11 @@ namespace Arena
             pl.plus.rectTransform.pivot = new Vector2(0.5f, 0f);
             pl.plus.rectTransform.anchoredPosition = new Vector2(0, 52);
             pl.plus.rectTransform.sizeDelta = new Vector2(38, 38);
+            pl.level = Ui.Image(pl.root, "Level", Ui.Circle, new Color(0.25f, 0.55f, 1f));
+            pl.level.rectTransform.anchorMin = pl.level.rectTransform.anchorMax = new Vector2(0.5f, 0f);
+            pl.level.rectTransform.sizeDelta = new Vector2(34, 34);
+            pl.levelText = Ui.Text(pl.level.transform, "N", "", 24, Color.white, TextAnchor.MiddleCenter, Ui.FontBlack);
+            Ui.Stretch(pl.levelText.rectTransform);
             return pl;
         }
 
@@ -164,6 +171,21 @@ namespace Arena
                     p.name.color = gifter ? new Color(1f, 0.82f, 0.2f) : f.IsBot ? new Color(0.85f, 0.85f, 0.9f) : Color.white;
                     p.name.fontSize = gifter ? 34 : 30;
                 }
+                // level badge: blue = comments / likes (max 3), gold = gifts (4-7), purple = legend (8)
+                int lvl = Gear.DisplayLevel(f.viewer);
+                bool showLvl = showName && lvl > 0;
+                p.level.enabled = showLvl;
+                p.levelText.enabled = showLvl;
+                if (showLvl)
+                {
+                    string ls = lvl.ToString();
+                    if (p.levelText.text != ls) p.levelText.text = ls;
+                    p.level.color = lvl >= 8 ? new Color(0.7f, 0.35f, 1f) : lvl >= 4 ? new Color(1f, 0.72f, 0.12f) : new Color(0.22f, 0.55f, 1f);
+                    p.levelText.color = lvl >= 4 && lvl < 8 ? new Color(0.25f, 0.13f, 0.02f) : Color.white;
+                    float nameW = Mathf.Min(p.name.preferredWidth, 220f);
+                    p.level.rectTransform.anchoredPosition = new Vector2(-nameW * 0.5f - 22f, 34f);
+                    p.level.rectTransform.localScale = Vector3.one * (lvl >= 4 ? 1.12f : 1f);
+                }
                 float hp01 = Mathf.Clamp01(f.Hp01);
                 p.bar.rectTransform.anchorMax = new Vector2(hp01, 1);
                 p.bar.color = hp01 > 0.5f ? Color.Lerp(new Color(1f, 0.85f, 0.1f), new Color(0.2f, 0.9f, 0.25f), (hp01 - 0.5f) * 2f)
@@ -173,7 +195,7 @@ namespace Arena
                 // status sign: "!" just woke > "+" low HP > "zzz" dull
                 bool woke = now - f.wokeAt < 1.2f;
                 bool low = f.hp < Cfg.health.lowHp;
-                bool dull = !f.IsBot && f.intelligence <= 0.35f;
+                bool dull = f.state == FState.Dizzy;
                 p.plus.enabled = !woke && low;
                 if (p.plus.enabled)
                 {

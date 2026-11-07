@@ -331,11 +331,11 @@
     "gateAngleDeg": 90
   },
   "camera": {
-    "pitchDeg": 42,
+    "pitchDeg": 45,
     "yawDeg": 45,
     "fov": 45,
-    "minDistance": 16.5,
-    "maxDistance": 23,
+    "minDistance": 18,
+    "maxDistance": 24.5,
     "spreadForMax": 7,
     "followSec": 1.8,
     "maxOffsetFromCenter": 3,

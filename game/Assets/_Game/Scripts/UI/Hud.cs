@@ -46,7 +46,6 @@ namespace Arena
 
             BuildGiftGuide();
             // The permanent gift key now lives on a stadium sign, leaving the fighting area clear.
-            root.Find("GiftGuide").gameObject.SetActive(false);
             BuildLobby();
             BuildWinner();
         }

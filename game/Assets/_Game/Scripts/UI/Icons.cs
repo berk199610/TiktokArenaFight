@@ -342,6 +342,16 @@ namespace Arena
                     p.Circle(0.5f, 0.72f, 0.16f, Color.white);
                     p.RoundRect(0.26f, 0.1f, 0.74f, 0.52f, 0.16f, Color.white);
                     break;
+                case "follow":
+                    p.Circle(0.42f, 0.66f, 0.17f, ink, O);
+                    p.RoundRect(0.16f, 0.1f, 0.68f, 0.5f, 0.17f, ink, O);
+                    p.Circle(0.42f, 0.66f, 0.17f, Color.white);
+                    p.RoundRect(0.16f, 0.1f, 0.68f, 0.5f, 0.17f, Color.white);
+                    p.Circle(0.76f, 0.34f, 0.19f, ink, O);
+                    p.Circle(0.76f, 0.34f, 0.19f, new Color(1f, 0.2f, 0.42f));
+                    p.RoundRect(0.735f, 0.21f, 0.785f, 0.47f, 0.02f, Color.white);
+                    p.RoundRect(0.63f, 0.315f, 0.89f, 0.365f, 0.02f, Color.white);
+                    break;
                 case "fire":
                     DrawFlame(p, O);
                     break;

@@ -160,6 +160,7 @@ namespace Arena
             rig.handL = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.LeftHand) : null;
             rig.footR = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.RightFoot) : null;
 
+            Accessories.CaptureRest(body, rig.head, rig.neck, rig.chest, rig.hips, rig.handL, rig.handR, rig.footR);
             Gear.PrepareBase(rig, modelGo.transform);
             rig.crown = Accessories.BuildGifterCrown(rig, body);
             if (System.Environment.CommandLine.Contains("-gallery") && rig.accessoryRenderers.Count > 0)

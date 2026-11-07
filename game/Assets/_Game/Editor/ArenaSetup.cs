@@ -896,21 +896,31 @@ namespace Arena.EditorTools
 
     public static class BuildScript
     {
-        public const string ExePath = "../Builds/Windows/ArenaDovusu.exe";
+        public const string ExePath = "../Builds/Windows/Arena Dovusu.exe";
 
         [MenuItem("Arena/Windows için derle")]
         public static void BuildWindows()
         {
             ArenaSetup.AuditFighterMaterials();
+            string exe = ExePath;
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < args.Length; i++) if (args[i] == "-buildPath") exe = args[i + 1];
             var opts = new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Scenes/Main.unity" },
-                locationPathName = ExePath,
+                locationPathName = exe,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,
             };
-            var report = BuildPipeline.BuildPlayer(opts);
-            Debug.Log("[Arena] Derleme sonucu: " + report.summary.result + " -> " + Path.GetFullPath(ExePath) + " (" + report.summary.totalSize / (1024 * 1024) + " MB)");
+            // -testBuild: a second copy that can run next to the live game (own name, no single-instance lock)
+            bool test = System.Array.IndexOf(args, "-testBuild") >= 0;
+            string oldName = PlayerSettings.productName;
+            bool oldSingle = PlayerSettings.forceSingleInstance;
+            if (test) { PlayerSettings.productName = oldName + " Test"; PlayerSettings.forceSingleInstance = false; }
+            UnityEditor.Build.Reporting.BuildReport report;
+            try { report = BuildPipeline.BuildPlayer(opts); }
+            finally { if (test) { PlayerSettings.productName = oldName; PlayerSettings.forceSingleInstance = oldSingle; } }
+            Debug.Log("[Arena] Derleme sonucu: " + report.summary.result + " -> " + Path.GetFullPath(exe) + " (" + report.summary.totalSize / (1024 * 1024) + " MB)");
             if (Application.isBatchMode && report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) EditorApplication.Exit(1);
         }
 
