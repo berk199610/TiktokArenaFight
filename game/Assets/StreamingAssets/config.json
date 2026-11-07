@@ -1,0 +1,298 @@
+{
+  "roster": {
+    "capacity": 100,
+    "commentEntryWindowSec": 90,
+    "activityCheckIntervalSec": 60,
+    "inactiveAfterSec": 120,
+    "giftProtectionSec": 300,
+    "evictActivityWindowSec": 120,
+    "queueMax": 300
+  },
+  "intelligence": {
+    "fullUntilSec": 45,
+    "halfUntilSec": 70,
+    "minAtSec": 90,
+    "fullValue": 1.0,
+    "halfValue": 0.5,
+    "minValue": 0.1,
+    "botValue": 0.7,
+    "reactionFull": 0.15,
+    "reactionHalf": 0.5,
+    "reactionMin": 1.0,
+    "dodgeChanceFull": 0.3,
+    "dodgeChanceHalf": 0.05,
+    "wrongTargetChanceHalf": 0.25,
+    "dullDizzyChance": 0.45,
+    "dullWrongWayChance": 0.3
+  },
+  "health": {
+    "start": 1000,
+    "max": 1000,
+    "likeHp": 1,
+    "maxLikesPerSec": 5,
+    "commentHp": 5,
+    "giftHpPerCoin": 10,
+    "giftFullHpCoins": 100,
+    "lowHp": 300,
+    "veryLowHp": 150,
+    "lowWalkMul": 0.7,
+    "lowAttackSpeedMul": 0.75,
+    "veryLowKnockdownChance": 0.35,
+    "inactiveDrainPerSec": 6,
+    "inactiveDamageTakenMul": 1.5
+  },
+  "death": {
+    "lieSec": 2,
+    "penaltySec": 40,
+    "reviveMinHp": 500
+  },
+  "bots": {
+    "startCount": 4,
+    "fillWhenTotalBelow": 10,
+    "fillTarget": 6,
+    "noNewBotsAboveReal": 20,
+    "botDrainStartsAboveReal": 10,
+    "botDrainPerSec": 4
+  },
+  "combat": {
+    "punchDamage": 20,
+    "punchRange": 1.2,
+    "punchCooldown": 0.8,
+    "kickDamage": 35,
+    "kickRange": 1.6,
+    "kickCooldown": 1.4,
+    "kickWindupSec": 0.45,
+    "hitArcDeg": 80,
+    "hitStopSec": 0.05,
+    "lightPush": 0.6,
+    "heavyPush": 3.5,
+    "heavyStaggerSec": 0.6,
+    "knockdownSec": 1.0,
+    "launchUpSpeed": 5.5,
+    "launchBackSpeed": 7.0,
+    "gravity": 20,
+    "wallBounce": 0.6,
+    "superHitFlyDamage": 50
+  },
+  "moves": {
+    "powerPunch": {
+      "damage": 60,
+      "maxCharges": 5,
+      "timeoutSec": 12
+    },
+    "bat": {
+      "durationSec": 15,
+      "rangeMul": 1.5,
+      "damageMul": 2.0
+    },
+    "shovel": {
+      "durationSec": 20,
+      "damage": 60,
+      "range": 2.2,
+      "arcDeg": 180,
+      "cooldown": 1.3
+    },
+    "spinKick": {
+      "durationSec": 3,
+      "radius": 2.0,
+      "damagePerSpin": 50,
+      "spins": 3,
+      "push": 4.0
+    },
+    "shockwave": {
+      "radius": 4.0,
+      "damage": 150,
+      "jumpSec": 0.55
+    },
+    "giant": {
+      "durationSec": 20,
+      "scale": 1.4,
+      "damageMul": 2.0
+    },
+    "tornado": {
+      "durationSec": 10,
+      "tickSec": 0.5,
+      "damage": 40,
+      "radius": 1.8,
+      "speed": 3.2,
+      "fling": 6.0
+    },
+    "stackMaxSec": 60,
+    "queueMax": 3,
+    "powerPoseSec": 0.5
+  },
+  "gifts": {
+    "tiers": [
+      {
+        "minCoins": 1,
+        "move": "PowerPunch",
+        "label": "Yumruk"
+      },
+      {
+        "minCoins": 5,
+        "move": "Bat",
+        "label": "Sopa"
+      },
+      {
+        "minCoins": 30,
+        "move": "Shovel",
+        "label": "Kürek"
+      },
+      {
+        "minCoins": 100,
+        "move": "SpinKick",
+        "label": "Döner Tekme"
+      },
+      {
+        "minCoins": 300,
+        "move": "Shockwave",
+        "label": "Dalga"
+      },
+      {
+        "minCoins": 1000,
+        "move": "Giant",
+        "label": "Dev"
+      },
+      {
+        "minCoins": 5000,
+        "move": "Tornado",
+        "label": "Tornado"
+      }
+    ],
+    "catalog": [
+      {
+        "name": "Rose",
+        "coins": 1
+      },
+      {
+        "name": "TikTok",
+        "coins": 1
+      },
+      {
+        "name": "GG",
+        "coins": 1
+      },
+      {
+        "name": "Ice Cream Cone",
+        "coins": 1
+      },
+      {
+        "name": "Heart Me",
+        "coins": 1
+      },
+      {
+        "name": "Finger Heart",
+        "coins": 5
+      },
+      {
+        "name": "Doughnut",
+        "coins": 30
+      },
+      {
+        "name": "Hand Hearts",
+        "coins": 100
+      },
+      {
+        "name": "Corgi",
+        "coins": 299
+      },
+      {
+        "name": "Money Gun",
+        "coins": 500
+      },
+      {
+        "name": "Galaxy",
+        "coins": 1000
+      },
+      {
+        "name": "Lion",
+        "coins": 29999
+      },
+      {
+        "name": "Universe",
+        "coins": 44999
+      }
+    ],
+    "goldUnlockTotalCoins": 1000
+  },
+  "ai": {
+    "thinkMin": 0.2,
+    "thinkMax": 0.4,
+    "perceptionRadius": 8,
+    "revengeSec": 10,
+    "maxAttackersPerTarget": 3,
+    "separationRadius": 0.9,
+    "separationStrength": 3.0,
+    "speedVariance": 0.1,
+    "animSpeedVariance": 0.08,
+    "walkSpeed": 1.6,
+    "runSpeed": 3.6,
+    "turnSpeedDeg": 540,
+    "edgeRadius": 9.5,
+    "tieEpsilon": 0.06,
+    "restChance": 0.08,
+    "tauntWindowSec": 2.0
+  },
+  "round": {
+    "prepSec": 10,
+    "entriesPerSec": 5,
+    "prepRecentSec": 120,
+    "finalAfterSec": 180,
+    "finalAtAlive": 10,
+    "ringStartRadius": 12,
+    "ringEndRadius": 4,
+    "ringShrinkSec": 60,
+    "ringDps": 30,
+    "winnerSec": 8,
+    "maxRoundSec": 330
+  },
+  "points": {
+    "win": 100,
+    "kill": 10,
+    "top10": 20,
+    "bossKill": 50,
+    "bossMinRoundCoins": 100
+  },
+  "names": {
+    "showSec": 3,
+    "alwaysShowAtOrBelow": 20
+  },
+  "arena": {
+    "radius": 12,
+    "gateAngleDeg": 90
+  },
+  "camera": {
+    "pitchDeg": 42,
+    "yawDeg": 45,
+    "fov": 45,
+    "minDistance": 23,
+    "maxDistance": 29,
+    "spreadForMax": 7,
+    "followSec": 1.5,
+    "maxOffsetFromCenter": 5,
+    "giftNudgeWeight": 6,
+    "giftNudgeMinCoins": 100,
+    "lookAhead": 2.6,
+    "maxOffsetForward": 2
+  },
+  "vigor": {
+    "maxBulk": 1.22,
+    "minBulk": 0.8,
+    "fullForSec": 30,
+    "thinAfterSec": 150
+  },
+  "bridge": {
+    "url": "ws://127.0.0.1:8788/game",
+    "reconnectSec": 2
+  },
+  "dev": {
+    "trafficViewers": 60,
+    "trafficEventsPerSec": 6
+  },
+  "board": {
+    "distanceBehind": 0.3,
+    "height": 1.0,
+    "scale": 1.0,
+    "rows": 6
+  }
+}

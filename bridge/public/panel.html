@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Paneli</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#2a313c; --text:#e6edf3; --dim:#8b949e; --acc:#ffd23f; --ok:#3fb950; --bad:#f85149; }
+  :root[data-theme="light"] { --bg:#f6f8fa; --card:#fff; --line:#d0d7de; --text:#1f2328; --dim:#59636e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, "Segoe UI", sans-serif; }
+  header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; margin-right:auto; }
+  .pill { padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line); font-size:13px; white-space:nowrap; }
+  .pill.ok { border-color:var(--ok); color:var(--ok); } .pill.bad { border-color:var(--bad); color:var(--bad); }
+  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; padding:14px 16px 40px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  h2 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); margin:0 0 10px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; align-items:center; }
+  button { background:#21262d; color:#e6edf3; border:1px solid var(--line); border-radius:8px; padding:9px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:#58a6ff; }
+  button.gift { background:#3b2a07; border-color:#8a6d1d; }
+  button.warn { border-color:var(--bad); color:#ffb4ae; }
+  input[type=text] { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; width:100%; }
+  input[type=range] { width:100%; }
+  .muted { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔️ Arena Dövüşü — Yayıncı Paneli</h1>
+  <span id="game" class="pill bad">Oyun bağlı değil</span>
+  <span id="src" class="pill">Kaynak: —</span>
+  <span id="eps" class="pill">0 olay/sn</span>
+</header>
+<main>
+  <section>
+    <h2>Tek izleyici olarak dene</h2>
+    <div class="row"><input id="user" type="text" placeholder="İzleyici adı (boş = Berk)"></div>
+    <div class="row">
+      <button onclick="sim('comment')">💬 Yorum</button>
+      <button onclick="sim('like',{count:1})">❤️ Beğeni</button>
+      <button onclick="sim('like',{count:5})">❤️ x5</button>
+    </div>
+    <div class="row" id="gifts"></div>
+    <div class="muted">Hediye: 1 Yumruk · 5 Sopa · 30 Kürek · 100 Döner Tekme · 300 Dalga · 1.000 Dev · 5.000 Tornado</div>
+  </section>
+
+  <section>
+    <h2>Kalabalık botu</h2>
+    <div class="row"><span>Sahte izleyici: <b id="vval">0</b></span></div>
+    <input type="range" id="viewers" min="0" max="300" step="5" value="0">
+    <div class="row" style="margin-top:8px"><span>Olay hızı: <b id="rval">6</b></span></div>
+    <input type="range" id="rate" min="0" max="40" step="1" value="6">
+    <div class="row" style="margin-top:8px"><span>Hediye oranı: <b id="gval">8</b>%</span></div>
+    <input type="range" id="gshare" min="0" max="50" step="1" value="8">
+  </section>
+
+  <section>
+    <h2>Oyun komutları</h2>
+    <div class="row">
+      <button onclick="cmd('pause')">⏯ Duraklat / devam</button>
+      <button onclick="cmd('endRound')">⏭ Turu bitir</button>
+    </div>
+    <div class="row">
+      <button class="warn" onclick="if(confirm('Skor tablosu sıfırlansın mı? (puan, kazanma, devirme silinir; kostümler kalır)')) cmd('resetScores')">Skor tablosunu sıfırla</button>
+      <button class="warn" onclick="if(confirm('TÜM izleyici kayıtları silinsin mi? Bu geri alınamaz.')) cmd('deleteAll')">Tüm kayıtları sil</button>
+    </div>
+    <div class="row"><input id="kick" type="text" placeholder="Çıkarılacak kullanıcı kimliği (userId)"></div>
+    <div class="row"><button class="warn" onclick="const v=document.getElementById('kick').value.trim(); if(v && confirm(v+' oyundan çıkarılsın mı?')) cmd('kick', v)">Kullanıcıyı oyundan çıkar</button></div>
+  </section>
+</main>
+<script>
+  const tiers = [['Yumruk',1],['Sopa',5],['Kürek',30],['Döner Tekme',100],['Dalga',300],['Dev',1000],['Tornado',5000]];
+  const g = document.getElementById('gifts');
+  tiers.forEach(([n,c],i) => { const b=document.createElement('button'); b.className='gift'; b.textContent=`🎁 ${n} (${c})`; b.onclick=()=>sim('gift',{tier:i}); g.appendChild(b); });
+  let ws;
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}/panel`);
+    ws.onmessage = (m) => {
+      const s = JSON.parse(m.data);
+      if (s.t !== 'status') return;
+      const game = document.getElementById('game');
+      game.textContent = s.gameConnected ? 'Oyun bağlı' : 'Oyun bağlı değil';
+      game.className = 'pill ' + (s.gameConnected ? 'ok' : 'bad');
+      document.getElementById('src').textContent = 'Kaynak: ' + (s.provider === 'tiktok' ? (s.tiktokConnected ? 'TikTok (bağlı)' : 'TikTok (bağlanıyor)') : 'Simülatör');
+      document.getElementById('eps').textContent = s.eventsPerSecond + ' olay/sn';
+    };
+    ws.onclose = () => setTimeout(connect, 1500);
+  }
+  connect();
+  const send = (o) => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
+  const user = () => document.getElementById('user').value;
+  function sim(action, extra={}) { send({ t:'sim', action, user:user(), ...extra }); }
+  function cmd(c, arg='') { send({ t:'cmd', cmd:c, arg }); }
+  const bind = (id, out, action, f=(v)=>v) => { const el=document.getElementById(id); el.oninput=()=>{ document.getElementById(out).textContent=el.value; send({t:'sim', action, value:f(Number(el.value))}); }; };
+  bind('viewers','vval','viewers'); bind('rate','rval','rate'); bind('gshare','gval','giftShare',(v)=>v/100);
+</script>
+</body>
+</html>
