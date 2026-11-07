@@ -73,6 +73,9 @@ namespace Arena
                 // the streamer's own gift picture (StreamingAssets/GiftIcons/<icon>) or a coin
                 var pic = GiftResolver.Picture(tiers[i].icon);
                 var gift = Ui.Image(row, "Gift", pic != null ? pic : Icons.Get("coin"), Color.white);
+                int tierIndex = i; var giftImg = gift;
+                // pictures fetched by the bridge during the stream show up without restarting the game
+                GameConfig.Reloaded += () => { var t = GameConfig.Current.gifts.tiers; if (giftImg == null || tierIndex >= t.Length) return; var p2 = GiftResolver.Picture(t[tierIndex].icon); if (p2 != null) { giftImg.sprite = p2; giftImg.rectTransform.sizeDelta = new Vector2(46, 46); } };
                 gift.preserveAspect = true;
                 gift.rectTransform.anchorMin = gift.rectTransform.anchorMax = new Vector2(0, 0.5f);
                 gift.rectTransform.anchoredPosition = new Vector2(24, 0);

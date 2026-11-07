@@ -52,6 +52,7 @@ setInterval(() => { eventsPerSecond = eventsThisSecond; eventsThisSecond = 0; br
 
 const sim = new Simulator(emitEvent);
 const tiktok = new TikTokProvider(emitEvent, log, path.join(root, 'data'));
+tiktok.giftImageRoot = path.resolve(root, '..'); // gift pictures go into the game folders
 if (provider === 'tiktok' && cfg.tiktokUsername) tiktok.start(cfg.tiktokUsername, cfg.signApiKey);
 
 function broadcastStatus() {

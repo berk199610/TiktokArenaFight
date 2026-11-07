@@ -89,6 +89,7 @@ namespace Arena
             Graves.transform.SetParent(World.root, false);
             var uiGo = new GameObject("UI");
             uiGo.transform.SetParent(transform, false);
+            Sfx.Create(gameObject);
             Hud = uiGo.AddComponent<Hud>();
             Hud.Init();
             Names = uiGo.AddComponent<Nameplates>();
@@ -213,6 +214,7 @@ namespace Arena
 
         void StartWinner(float now)
         {
+            Sfx.I?.Winner();
             State = RoundState.Winner;
             StateStart = now;
             lastConfettiAt = now;

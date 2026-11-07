@@ -173,6 +173,7 @@ namespace Arena
         /// <summary>"Ben öne geçtim" moment: stops, light pillar comes down, flexes, then does the move (doc §4).</summary>
         void BeginPose(MoveKind k, int count, float power, float now)
         {
+            Sfx.I?.Gift();
             f.combat.Cancel();
             f.brain.ClearTarget();
             posing = k;

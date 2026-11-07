@@ -181,6 +181,7 @@ namespace Arena
         /// <summary>Hit effect, different for every kind of hit (user request: not only stars).</summary>
         public void Impact(Vector3 p, ImpactStyle style, bool allowWord = true)
         {
+            Sfx.I?.Impact(style);
             switch (style)
             {
                 case ImpactStyle.Punch:

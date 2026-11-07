@@ -38,6 +38,7 @@ namespace Arena
             var f = Take(v.costumeId);
             Active.Add(f);
             f.Activate(v, pos, runTo, now);
+            if (!f.IsBot) Sfx.I?.Join();
             v.state = ViewerState.InArena;
             return f;
         }

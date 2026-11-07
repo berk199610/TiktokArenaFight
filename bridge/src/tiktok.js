@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 import { GiftEvents, readUser } from './tiktok-events.js';
+import { installGiftImages } from './gift-images.js';
 
 const safeJson = (o) => JSON.stringify(o, (k, v) => (typeof v === 'bigint' ? v.toString() : v), 2);
 
@@ -157,6 +158,7 @@ export class TikTokProvider {
       conn.fetchAvailableGifts().then((gifts) => {
         if (this.conn !== conn || !this.wanted || !Array.isArray(gifts)) return;
         this.giftMetadata = new Map(gifts.map((g) => [String(g.id), g]));
+        if (this.giftImageRoot) installGiftImages(gifts, this.giftImageRoot, this.log).catch((e) => this.log('Hediye resimleri alınamadı:', e.message));
       }).catch(() => {
         if (this.conn === conn && this.wanted) this.log('TikTok hediye kataloğu alınamadı; olaylardaki hediye değerleri kullanılacak.');
       });

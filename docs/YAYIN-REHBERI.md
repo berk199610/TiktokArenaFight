@@ -26,6 +26,14 @@ Bunları senin yapman gerekiyor (TikTok hesabına ve TikTok LIVE Studio'ya ben e
    - küçük bir **hediye** (gül gibi) → güç alma pozu ve güçlü yumruk.
    Panelde "TikTok'tan gelen: … yorum · … beğeni · … hediye" sayıları artmalı.
 
+## Ses ve hediye resimleri
+- Oyunda kısık bir arka plan müziği ve az sayıda efekt sesi var (hediye, nakavt, seviye atlama, kazanan). Yayında
+  duyulması için TikTok LIVE Studio'da **Masaüstü/Uygulama sesi** açık olmalı. Müzik fazla gelirse Studio'daki ses
+  çubuğundan kısabilirsin.
+- **Hediye resimleri kendiliğinden gelir:** yayını başlatıp köprü bağlandığında TikTok'un hediye listesi okunur, her
+  coin aralığı için en bilinen hediyenin (Gül, Para Tabancası, Galaksi…) resmi indirilir ve ekrandaki hediye
+  listesinde görünür. Bu sadece bir kez olur; resimler `StreamingAssets\GiftIcons` klasöründe kalır.
+
 ## Dikkat
 - Oyun penceresini **simge durumuna küçültme** (yakalama durabilir). Üstüne başka pencere gelebilir.
 - Panelde "**canlı yayında değil ya da kullanıcı adı yanlış**" yazıyorsa: önce yayını başlat, adı kontrol et.

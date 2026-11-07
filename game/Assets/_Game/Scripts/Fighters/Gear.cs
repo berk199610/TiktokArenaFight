@@ -111,6 +111,7 @@ namespace Arena
             int s = SupportLevel(v), g = GiftLevel(v);
             if (s <= f.gearSupport && g <= f.gearGift) return;
             bool giftUp = g > f.gearGift;
+            Sfx.I?.LevelUp();
             Apply(f, true);
             var color = giftUp ? Gold : Blue;
             Fx.I.GroundRing(f.Pos, 0.35f, 1.2f, 0.65f, color);
