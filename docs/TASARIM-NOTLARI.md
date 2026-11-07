@@ -22,13 +22,27 @@ Hepsi `config.json`'dan değiştirilebilir; kural değişikliği gerekirse önce
    Döner tekme, dalga ve tornado darbeleri de aynı uçma/düşme/kalkmayı kullanır.
 9. **Kaslı / cılız görünüm** (PDF son sayfa): girişte hafif kaslı, hediye gelince en kaslı, etkileşim olmadıkça
    gövde incelir (`vigor`). Dev Mod ayrıca 1,4 kat büyütür.
-10. **Kamera**: köşeden bakış (yaw 45°), eğim 42°, uzaklık 23–29 m. Skor tablosunun ekranda hep aynı bantta
-    (TikTok'un üst arayüzünün altında) kalması için kamera, bakış yönünde merkezden en fazla 2 m, yana 5 m kayar.
+10. **Kamera**: köşeden bakış (yaw 45°), eğim 42°, uzaklık 16,5–21,5 m (+/- 1 m yavaş "nefes"), dövüş ekranın orta-alt
+    kısmında kalsın diye 3,5 m ileriye bakar; merkezden bakış yönünde en fazla 3 m, yana 6 m kayar, hız sınırlıdır.
 11. **Hediye kademesi** tek hediyenin coin değerine göre seçilir; aynı hediyeden seri gelirse (count) süre uzar.
 12. **Yorum dışı olaylar**: takip ve paylaşım yorum gibi sayılır (sahnede tutar, +5 can); "join" (canlıya girme)
     hiçbir şey yapmaz.
 13. **Sopa**: yumruk menzili ×1,5 ve hasarı ×2; tekmeler de sopa savurmasına döner.
 14. **Döner tekme / tornado / dalga / dev** sırasında karakter itilip düşürülmez, sadece sarsılır.
+
+## 2. tur kararları (Berk'in isteğiyle dokümandan değişenler)
+15. **Ölüm cezası 3 sn** (death.penaltySec): ölen, duman çıktıktan sonra yorum yazarsa hemen geri girer; bu, o turda
+    zaten savaşmış olanlar için savaş boyunca geçerli (roster.reentryByCommentUntilFinal). Yeni gelenler için yorumla
+    giriş yine ilk 90 sn. Hediye her zaman.
+16. **Hazırlık 15 sn** ve ekranda "JOIN NOW!" geri sayımı.
+17. **Silah değişimi:** sopa / kürek / güçlü yumruk varken yeni hediye gelirse eskisi hemen biter (doküman: "yenisi bekler").
+    Döner tekme, dalga, şimşek, tornado hâlâ birbirini bekler; **Dev mod** her şeyle birlikte çalışır.
+18. **Yeni kademe Şimşek** 2.500–4.999 coin; Dev 1.000–2.499. Kademe içinde güç 1,0–2,0 (süre / yarıçap / vuruş sayısı).
+19. **Darbe tepkisi güçle**: combat.knockdownPoise (95) ve launchPoise (135) eşikleri; tek yumruk kimseyi düşürmez.
+20. **Ateş halkası** 11,6 → 6,5 m, 75 sn (doküman 12 → 4 m, 60 sn). Uzun sürerse 3 m'ye kadar yavaşça kapanır.
+21. **Ekran dili İngilizce + ikon** (doküman Türkçe örnekler veriyordu).
+22. **Skor tablosu** ekrana sabit, kameraya dönük asılı ekran; duvarlar onu kapatmaz. İsim/emoji etiketleri tablonun
+    üstüne düşerse gizlenir.
 
 ## Varlıklar ve lisanslar
 | Varlık | Kaynak | Lisans | Repoda |

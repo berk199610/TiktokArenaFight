@@ -26,6 +26,7 @@ namespace Arena
         float lastTauntAt = -99f;
 
         static readonly List<Fighter> near = new List<Fighter>(64);
+        public static int Thinks, Decides, Applies, Rejected;
         static readonly List<(Plan plan, Fighter target, float score)> options = new List<(Plan, Fighter, float)>(8);
 
         public FighterBrain(Fighter f) { this.f = f; }
@@ -87,6 +88,7 @@ namespace Arena
         // ------------------------------------------------------------------ perception + decision
         void Think(float now)
         {
+            Thinks++;
             var ai = Cfg.ai;
             var gm = GameManager.I;
             float intel = f.intelligence;
@@ -100,8 +102,11 @@ namespace Arena
                 if (roll < (Cfg.intelligence.dullDizzyChance + Cfg.intelligence.dullWrongWayChance) * 0.12f) { Decide(Plan.WrongWay, null, now, ReactionTime()); return; }
             }
 
-            gm.Fighters.Query(f.Pos, ai.perceptionRadius, near, f);
+            // few left (final battle): everyone looks much further so nobody idles at the end
+            float perc = ai.perceptionRadius * (gm.State == RoundState.Final || gm.Fighters.AliveCount <= 8 ? 2.5f : 1f);
+            gm.Fighters.Query(f.Pos, perc, near, f);
             options.Clear();
+            if (f.inactive && Random.value < 0.03f) GameManager.I.Emotes?.Show(f, "tired");
 
             // threats: an enemy winding up a kick at me -> side-step (smart only)
             float dodge = DodgeChance();
@@ -150,9 +155,10 @@ namespace Arena
                 if (d < 3f) { closeEnemies++; threatCentroid += e.Pos; }
                 // crowd rule: at most N attackers per target (doc §5.3)
                 if (e.targetedBy >= ai.maxAttackersPerTarget && e != target) continue;
-                float close = 1f - d / ai.perceptionRadius;
+                float close = 1f - d / perc;
                 float s = f.pw.aggression * 0.5f + close * 0.65f * f.pw.closeness + (1f - e.Hp01) * 0.7f * f.pw.lowHpHunt;
                 if (gm.Cam != null && gm.Cam.InView(e.Pos)) s += 0.2f;     // camera rule
+                if (d < 1.8f) s += 0.35f;                                   // fight whoever is right in front of you
                 if (e == target) s += 0.12f;                                // stickiness
                 else s -= 0.1f * e.targetedBy;                              // spread fights into small groups (doc §5.3)
                 if (e.IsGifter && !special) s -= 0.05f;                     // gifters are a bit safer
@@ -197,7 +203,13 @@ namespace Arena
             // breathe
             if (Random.value < ai.restChance) options.Add((Plan.Rest, null, 0.3f + 0.2f * f.pw.caution));
 
-            if (enemies == 0) options.Add((Plan.Wander, null, 0.3f));
+            if (enemies == 0)
+            {
+                // nobody around: go and find someone instead of standing still
+                var far = gm.Fighters.NearestEnemy(f, 40f);
+                if (far != null) options.Add((Plan.Attack, far, 0.55f + f.pw.aggression * 0.3f));
+                else options.Add((Plan.Wander, null, 0.3f));
+            }
 
             if (options.Count == 0) return;
             // best two; near-tie -> random between them (doc §5.2)
@@ -217,15 +229,18 @@ namespace Arena
 
         void Decide(Plan p, Fighter t, float now, float delay)
         {
+            Decides++;
             pendingPlan = p;
             pendingTarget = t;
-            pendingAt = now + delay;
+            // a newer thought never postpones the reaction that is already on its way
+            if (!hasPending) pendingAt = now + delay;
             hasPending = true;
         }
 
         void Apply(Plan p, Fighter t, float now)
         {
-            if (!f.BrainDriven) return;
+            if (!f.BrainDriven) { Rejected++; return; }
+            Applies++;
             plan = p;
             var ai = Cfg.ai;
             switch (p)
@@ -236,13 +251,16 @@ namespace Arena
                     SetTarget(t);
                     planUntil = now + (p == Plan.Strafe ? Random.Range(0.8f, 1.6f) : 6f);
                     if (p == Plan.Strafe && Random.value < 0.3f) strafeSign = -strafeSign;
+                    if (p == Plan.Revenge && Random.value < 0.4f) GameManager.I.Emotes?.Show(f, "angry");
+                    else if (p == Plan.Attack && t != null && t.Hp01 < 0.35f && (f.personality == PersonalityType.Opportunist || Random.value < 0.3f)) GameManager.I.Emotes?.Show(f, "sneaky");
                     break;
                 case Plan.Taunt:
                     lastTauntAt = now;
                     ClearTarget();
                     f.state = FState.Taunting;
                     bool dance = f.personality == PersonalityType.Showman && Random.value < 0.6f;
-                    f.anim.Play(dance ? FighterAnimation.Dance : FighterAnimation.Yes, 0.12f);
+                    f.anim.Play(dance ? FighterAnimation.Dance : Random.value < 0.5f ? FighterAnimation.Yes : FighterAnimation.Cocky, 0.12f);
+                    GameManager.I.Emotes?.Show(f, dance ? "laugh" : Random.value < 0.5f ? "cool" : "laugh");
                     f.stateUntil = now + (dance ? 1.8f : 1.2f);
                     f.motor.Stop();
                     plan = Plan.None;
@@ -256,6 +274,7 @@ namespace Arena
                     f.state = FState.Dizzy;
                     f.stateUntil = now + Random.Range(1.8f, 3.5f);
                     f.anim.Play(FighterAnimation.Dizzy, 0.2f);
+                    GameManager.I.Emotes?.Show(f, "dizzy");
                     f.motor.Stop();
                     plan = Plan.None;
                     break;
@@ -283,6 +302,7 @@ namespace Arena
                 case Plan.Retreat:
                     ClearTarget();
                     planUntil = now + 1.2f;
+                    if (Random.value < 0.35f) GameManager.I.Emotes?.Show(f, "scared");
                     break;
                 case Plan.Center:
                     ClearTarget();
@@ -350,10 +370,20 @@ namespace Arena
                     }
                     else
                     {
-                        m.Stop();
                         m.FaceTo(t.Pos);
                         if (f.combat.CanAttack(now) && m.FacingAngleTo(t.Pos) < 40f)
+                        {
+                            m.Stop();
                             f.combat.Start(f.combat.Choose(d), t, now);
+                        }
+                        else
+                        {
+                            // footwork while waiting for the next swing: small side steps, never frozen
+                            var side = Vector3.Cross(Vector3.up, to / Mathf.Max(0.01f, d)) * strafeSign;
+                            var back = d < range * 0.6f ? -to / Mathf.Max(0.01f, d) * 0.6f : Vector3.zero;
+                            m.Move(side + back, 0.75f * f.speedMul);
+                            if (Random.value < dt * 0.6f) strafeSign = -strafeSign;
+                        }
                     }
                     break;
                 }
@@ -381,11 +411,15 @@ namespace Arena
                     break;
                 }
                 case Plan.Rest:
-                    m.Stop();
+                    // catching breath, but bouncing around a little (no frozen characters)
+                    m.ClearFace();
+                    m.Move(new Vector3(Mathf.Sin(now * 1.9f + f.uid), 0, Mathf.Cos(now * 1.5f + f.uid)), 0.5f);
                     if (now > planUntil) { plan = Plan.None; nextThink = 0f; }
                     break;
                 default:
-                    m.Stop();
+                    // no plan yet: keep moving a little while the next decision comes in
+                    m.ClearFace();
+                    m.Move(new Vector3(Mathf.Sin(now * 1.3f + f.uid), 0, Mathf.Cos(now * 1.1f + f.uid)), 0.6f);
                     break;
             }
         }

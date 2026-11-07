@@ -47,7 +47,7 @@ namespace Arena
             {
                 if (kb.cKey.wasPressedThisFrame) Send("comment");
                 if (kb.lKey.wasPressedThisFrame) Send("like", 0, 1);
-                for (int i = 0; i < 7; i++)
+                for (int i = 0; i < Mathf.Min(9, GameConfig.Current.gifts.tiers.Length); i++)
                 {
                     var key = kb[(Key)((int)Key.Digit1 + i)];
                     if (key.wasPressedThisFrame) Send("gift", GiftResolver.CoinsForTier(i), 1);
@@ -80,7 +80,8 @@ namespace Arena
         bool OverPanel(Vector2 screen)
         {
             if (!panel) return false;
-            var guiPos = new Vector2(screen.x, Screen.height - screen.y);
+            float scale = Mathf.Max(1f, Screen.height / 1080f);
+            var guiPos = new Vector2(screen.x, Screen.height - screen.y) / scale;
             return panelRect.Contains(guiPos);
         }
 
@@ -102,13 +103,14 @@ namespace Arena
         }
 
         // ------------------------------------------------------------------ IMGUI panel
-        Rect panelRect = new Rect(10, 10, 300, 470);
+        Rect panelRect = new Rect(10, 10, 300, 500);
         GUIStyle box, btn, lbl;
 
         void OnGUI()
         {
             if (!panel) return;
             float scale = Mathf.Max(1f, Screen.height / 1080f);
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
             if (btn == null)
             {
                 btn = new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold };

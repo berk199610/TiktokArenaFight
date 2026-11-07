@@ -137,6 +137,13 @@ namespace Arena.EditorTools
             if (add == null || alpha == null) throw new Exception("Arena/Fx shaders not found");
             SaveMat(new Material(add) { enableInstancing = true }, MatDir + "/M_FxAdd.mat");
             SaveMat(new Material(alpha) { enableInstancing = true }, MatDir + "/M_FxAlpha.mat");
+            var onTop = Shader.Find("Arena/UIOnTop");
+            var xray = Shader.Find("Arena/XRay");
+            if (onTop == null || xray == null) throw new Exception("Arena/UIOnTop or Arena/XRay shader not found");
+            SaveMat(new Material(onTop), MatDir + "/M_UIOnTop.mat");
+            var xm = new Material(xray);
+            xm.SetColor("_Color", new Color(0.55f, 0.85f, 1f, 0.55f));
+            SaveMat(xm, MatDir + "/M_XRay.mat");
 
             // stickman materials (palette textures belong to the licensed pack -> _Private)
             var baseTex = LoadTex(StickTexDir + "/TallStickmanPack1_Base_Texture.png", false, false);
@@ -395,6 +402,68 @@ namespace Arena.EditorTools
             var mid = Lerp(stumble, lyingPose, 0.55f);
             SaveClip("Fall", new[] { (0f, basePose), (0.12f, stumble), (0.32f, mid), (0.5f, lyingPose) }, false, -1f);
 
+            // ---- fighting stance that bounces a little (used as "idle" so nobody looks frozen)
+            var guardClip = Clip("Punch_Enter");
+            var guard = guardClip != null ? SampleClip(guardClip, guardClip.length * 0.98f) : basePose;
+            var gDown = PoseFrom(handler, animator, guard, a => { Rot(a, HumanBodyBones.LeftUpperLeg, Vector3.right, -10); Rot(a, HumanBodyBones.LeftLowerLeg, Vector3.right, 18); Rot(a, HumanBodyBones.RightUpperLeg, Vector3.right, -10); Rot(a, HumanBodyBones.RightLowerLeg, Vector3.right, 18); Rot(a, HumanBodyBones.Spine, Vector3.right, 5); });
+            gDown.bodyPosition += new Vector3(0, -0.035f, 0);
+            var gUp = PoseFrom(handler, animator, guard, a => { Rot(a, HumanBodyBones.Spine, Vector3.right, -3); Rot(a, HumanBodyBones.Head, Vector3.forward, 4); });
+            SaveClip("FightIdle", new[] { (0f, gUp), (0.2f, gDown), (0.4f, gUp), (0.6f, gDown), (0.8f, gUp) }, true, -1f);
+
+            // ---- stumbling sideways (strong hit from the side)
+            HumanPose Lean(float side, float amount)
+            {
+                var p = PoseFrom(handler, animator, basePose, a =>
+                {
+                    Rot(a, HumanBodyBones.Spine, Vector3.forward, side * amount);
+                    Rot(a, HumanBodyBones.Chest, Vector3.forward, side * amount * 0.5f);
+                    Rot(a, HumanBodyBones.Head, Vector3.forward, side * amount * 0.6f);
+                    Rot(a, HumanBodyBones.LeftUpperArm, Vector3.forward, -60f - side * 15f);
+                    Rot(a, HumanBodyBones.RightUpperArm, Vector3.forward, 60f - side * 15f);
+                    Rot(a, side > 0 ? HumanBodyBones.LeftUpperLeg : HumanBodyBones.RightUpperLeg, Vector3.forward, -side * amount * 0.7f);
+                });
+                p.bodyPosition += new Vector3(-side * amount * 0.004f, -0.02f, 0);
+                return p;
+            }
+            // side = +1 leans to -x (left), -1 leans to +x (right)
+            SaveClip("StaggerL", new[] { (0f, basePose), (0.12f, Lean(1f, 18f)), (0.32f, Lean(1f, 26f)), (0.65f, basePose) }, false, -1f);
+            SaveClip("StaggerR", new[] { (0f, basePose), (0.12f, Lean(-1f, 18f)), (0.32f, Lean(-1f, 26f)), (0.65f, basePose) }, false, -1f);
+
+            // ---- knocked down to a side (ends lying on the back so the normal get-up follows)
+            HumanPose Roll(HumanPose p, float deg)
+            {
+                var o = p; o.muscles = (float[])p.muscles.Clone();
+                o.bodyRotation = Quaternion.AngleAxis(deg, Vector3.forward) * p.bodyRotation;
+                return o;
+            }
+            var midL = Roll(Lerp(Lean(1f, 32f), lyingPose, 0.55f), 35f);
+            var midR = Roll(Lerp(Lean(-1f, 32f), lyingPose, 0.55f), -35f);
+            SaveClip("FallL", new[] { (0f, basePose), (0.14f, Lean(1f, 32f)), (0.32f, midL), (0.5f, lyingPose) }, false, -1f);
+            SaveClip("FallR", new[] { (0f, basePose), (0.14f, Lean(-1f, 32f)), (0.32f, midR), (0.5f, lyingPose) }, false, -1f);
+
+            // ---- more deaths: face down (forward), on the side, dropping to the knees first
+            var spineAxis = lyingPose.bodyRotation * Vector3.up;
+            var faceDown = lyingPose; faceDown.muscles = (float[])lyingPose.muscles.Clone();
+            faceDown.bodyRotation = Quaternion.AngleAxis(180f, Vector3.up) * Quaternion.AngleAxis(180f, spineAxis) * lyingPose.bodyRotation;
+            faceDown.bodyPosition = new Vector3(-lyingPose.bodyPosition.x, lyingPose.bodyPosition.y, -lyingPose.bodyPosition.z);
+            var hunch = PoseFrom(handler, animator, basePose, a => { Rot(a, HumanBodyBones.Spine, Vector3.right, 28); Rot(a, HumanBodyBones.Head, Vector3.right, 20); Rot(a, HumanBodyBones.LeftUpperArm, Vector3.right, -30); Rot(a, HumanBodyBones.RightUpperArm, Vector3.right, -30); Rot(a, HumanBodyBones.LeftUpperLeg, Vector3.right, -25); Rot(a, HumanBodyBones.LeftLowerLeg, Vector3.right, 40); });
+            hunch.bodyPosition += new Vector3(0, -0.06f, 0.04f);
+            SaveClip("DeathFwd", new[] { (0f, basePose), (0.22f, hunch), (0.55f, Lerp(hunch, faceDown, 0.5f)), (0.85f, faceDown), (1.3f, faceDown) }, false, -1f);
+
+            var sideLie = lyingPose; sideLie.muscles = (float[])lyingPose.muscles.Clone();
+            sideLie.bodyRotation = Quaternion.AngleAxis(80f, spineAxis) * lyingPose.bodyRotation;
+            SaveClip("DeathSide", new[] { (0f, basePose), (0.25f, Lean(1f, 30f)), (0.6f, Lerp(Lean(1f, 34f), sideLie, 0.6f)), (0.9f, sideLie), (1.3f, sideLie) }, false, -1f);
+
+            var knees = PoseFrom(handler, animator, basePose, a =>
+            {
+                Rot(a, HumanBodyBones.LeftUpperLeg, Vector3.right, -8); Rot(a, HumanBodyBones.LeftLowerLeg, Vector3.right, 105);
+                Rot(a, HumanBodyBones.RightUpperLeg, Vector3.right, -8); Rot(a, HumanBodyBones.RightLowerLeg, Vector3.right, 105);
+                Rot(a, HumanBodyBones.Spine, Vector3.right, 18); Rot(a, HumanBodyBones.Head, Vector3.right, 25);
+                Rot(a, HumanBodyBones.LeftUpperArm, Vector3.forward, 10); Rot(a, HumanBodyBones.RightUpperArm, Vector3.forward, -10);
+            });
+            knees.bodyPosition = new Vector3(basePose.bodyPosition.x, basePose.bodyPosition.y * 0.62f, basePose.bodyPosition.z);
+            SaveClip("DeathKnees", new[] { (0f, basePose), (0.3f, knees), (0.75f, knees), (1.1f, Lerp(knees, faceDown, 0.6f)), (1.35f, faceDown), (1.6f, faceDown) }, false, -1f);
+
             handler.Dispose();
             Object.DestroyImmediate(go);
             AssetDatabase.SaveAssets();
@@ -521,7 +590,7 @@ namespace Arena.EditorTools
                 return st;
             }
 
-            var loco = Loco("Loco", new[] { ("Idle_Loop", 0f), ("Walk_Loop", 1.6f), ("Jog_Fwd_Loop", 3.6f), ("Sprint_Loop", 6f) });
+            var loco = Loco("Loco", new[] { ("FightIdle", 0f), ("Walk_Loop", 1.6f), ("Jog_Fwd_Loop", 3.6f), ("Sprint_Loop", 6f) });
             sm.defaultState = loco;
             Loco("LocoHurt", new[] { ("Zombie_Idle_Loop", 0f), ("Zombie_Walk_Fwd_Loop", 1.2f) });
 
@@ -563,6 +632,14 @@ namespace Arena.EditorTools
             S("Dodge", "Roll", 1.3f, true, 0.85f);
             S("Air", "Jump_Loop");
             S("Guard", "Punch_Enter", 1f, true, 0.95f);
+            S("StaggerL", "StaggerL", 1f, true, 0.9f);
+            S("StaggerR", "StaggerR", 1f, true, 0.9f);
+            S("FallL", "FallL");
+            S("FallR", "FallR");
+            S("DeathFwd", "DeathFwd");
+            S("DeathSide", "DeathSide");
+            S("DeathKnees", "DeathKnees");
+            S("Cocky", "Idle_FoldArms_Loop", 1f, true, 0.7f);
 
             // upper-body hit reaction layer (light hits: head / chest jolt while legs keep walking)
             var mask = new AvatarMask { name = "UpperBody" };
@@ -637,8 +714,71 @@ namespace Arena.EditorTools
             AddPortraitGameViewSize();
         }
 
+        public const int FighterLayer = 8;
+
         static void ConfigureRenderer()
         {
+            var xrayMat = AssetDatabase.LoadAssetAtPath<Material>(MatDir + "/M_XRay.mat");
+            foreach (var guid in AssetDatabase.FindAssets("t:UniversalRendererData"))
+            {
+                var data = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(AssetDatabase.GUIDToAssetPath(guid));
+                if (data == null) continue;
+                // fighters are drawn by their own pass that marks the stencil, then the x-ray pass draws their
+                // silhouette where a wall hides them (but not where another fighter does)
+                data.opaqueLayerMask = ~(1 << FighterLayer);
+                for (int i = data.rendererFeatures.Count - 1; i >= 0; i--)
+                {
+                    var old = data.rendererFeatures[i];
+                    if (old != null && (old.name == "Fighters" || old.name == "FighterXRay"))
+                    {
+                        data.rendererFeatures.RemoveAt(i);
+                        Object.DestroyImmediate(old, true);
+                    }
+                }
+                var draw = ScriptableObject.CreateInstance<RenderObjects>();
+                draw.name = "Fighters";
+                draw.settings.Event = RenderPassEvent.AfterRenderingOpaques;
+                draw.settings.filterSettings.RenderQueueType = RenderQueueType.Opaque;
+                draw.settings.filterSettings.LayerMask = 1 << FighterLayer;
+                draw.settings.overrideMode = RenderObjects.RenderObjectsSettings.OverrideMaterialMode.None;
+                draw.settings.stencilSettings.overrideStencilState = true;
+                draw.settings.stencilSettings.stencilReference = 1;
+                draw.settings.stencilSettings.stencilCompareFunction = CompareFunction.Always;
+                draw.settings.stencilSettings.passOperation = StencilOp.Replace;
+                var xr = ScriptableObject.CreateInstance<RenderObjects>();
+                xr.name = "FighterXRay";
+                xr.settings.Event = RenderPassEvent.AfterRenderingOpaques;
+                xr.settings.filterSettings.RenderQueueType = RenderQueueType.Opaque;
+                xr.settings.filterSettings.LayerMask = 1 << FighterLayer;
+                xr.settings.overrideMode = RenderObjects.RenderObjectsSettings.OverrideMaterialMode.Material;
+                xr.settings.overrideMaterial = xrayMat;
+                xr.settings.overrideDepthState = true;
+                xr.settings.depthCompareFunction = CompareFunction.Greater;
+                xr.settings.enableWrite = false;
+                xr.settings.stencilSettings.overrideStencilState = true;
+                xr.settings.stencilSettings.stencilReference = 1;
+                xr.settings.stencilSettings.stencilCompareFunction = CompareFunction.NotEqual;
+                foreach (var f in new ScriptableRendererFeature[] { draw, xr })
+                {
+                    AssetDatabase.AddObjectToAsset(f, data);
+                    data.rendererFeatures.Add(f);
+                }
+                var so = new SerializedObject(data);
+                var map = so.FindProperty("m_RendererFeatureMap");
+                if (map != null)
+                {
+                    map.arraySize = data.rendererFeatures.Count;
+                    for (int i = 0; i < data.rendererFeatures.Count; i++)
+                        if (data.rendererFeatures[i] != null && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(data.rendererFeatures[i], out string g2, out long lid))
+                            map.GetArrayElementAtIndex(i).longValue = lid;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                }
+                data.SetDirty();
+                EditorUtility.SetDirty(data);
+            }
+            AssetDatabase.SaveAssets();
+            report.AppendLine("renderer: fighters on layer " + FighterLayer + " + x-ray silhouettes");
+
             foreach (var guid in AssetDatabase.FindAssets("t:UniversalRendererData"))
             {
                 var data = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(AssetDatabase.GUIDToAssetPath(guid));

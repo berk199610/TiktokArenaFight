@@ -19,6 +19,7 @@ numbers live in `game/Assets/StreamingAssets/config.json` (hot-reloaded, no magi
   hit Animation Events), custom humanoid clips authored with HumanPoseHandler (Kick, SpinKick, Flex, Slam,
   TornadoSpin, Fall), Animator Controller (base layer + upper-body Hit layer), materials, Main scene, player settings.
   Re-run it after changing import/animator code. State names in `FighterAnimation` must match `CreateAnimator`.
+- UI icons and emoji faces are painted from code (`UI/Icons.cs`); scoreboard = `UI/LeaderboardPanel.cs` (camera-facing, `Arena/UIOnTop` shader); hit reaction by force / poise in `Fighter.TakeHit`; gear levels in `Fighters/Gear.cs`; emotes in `UI/EmoteSystem.cs`; fighters on layer 8 with x-ray RenderObjects features (set up by `ArenaSetup.ConfigureRenderer`).
 - `game/Assets/_Private/` (gitignored): licensed stickman pack + arena model (Resources/Stickman, Resources/ArenaModel).
 - `bridge/` Node ESM (only dep `ws`), port 8788 (8787 is the football project's bridge). `src/tiktok.js` is a stub
   (Aşama 5: read the current tiktok-live-connector docs, do not guess field names; count gift streaks once).
@@ -36,8 +37,13 @@ Builds/Windows/ArenaDovusu.exe -screen-width 608 -screen-height 1080 -screen-ful
 tools/node/node.exe bridge/src/server.js
 curl -s -X POST localhost:8788/api/sim -d '{"action":"viewers","value":40}'
 ```
-If Berk has the project open in the Unity editor, batch mode fails (project lock): ask him to close Unity, or read
-`%LOCALAPPDATA%\Unity\Editor\Editor.log` for compile errors.
+If Berk has the project open in the Unity editor, batch mode fails (project lock). Then work in the build copy
+`C:\Projeler\TiktokArenaFight-build\game` (outside the repo): edit code in the main project, sync with
+`robocopy <main>\game\Assets <build>\game\Assets /E /XO` (**/XO**, otherwise the main project's older generated
+assets overwrite the freshly generated controller / renderer), run setup + build there, test the exe in
+`TiktokArenaFight-build\Builds\Windows`, then copy generated assets back (`_Game/Resources/Anim`,
+`_Game/Art/Animations/Custom`, `_Game/Resources/Materials`, `_Private/Resources/Materials`, `Settings`) and the build to
+`Builds\Windows`. `-autotest` logs attacks / hits / brain decisions every 5 s: if `applies` stays 0 the brains are starved.
 
 ## Conventions
 - C# 9 max. No per-frame allocations in hot paths (static lists, pools). Brains think every 0.2–0.4 s, staggered.

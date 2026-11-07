@@ -34,7 +34,7 @@ namespace Arena
             GameManager.I.Fighters.AddHazard(f, c.radius);
         }
 
-        public override void Extend(int count, float now) { remaining = Mathf.Min(remaining + count, 3); }
+        public override void Extend(int count, float pow, float now) { remaining = Mathf.Min(remaining + count, 3); power = Mathf.Max(power, pow); }
 
         public override void Tick(float dt, float now)
         {
@@ -42,10 +42,11 @@ namespace Arena
             if (!slammed && now >= slamAt && !f.motor.airborne)
             {
                 slammed = true;
-                float r = c.radius * (f.giant ? Cfg.moves.giant.scale : 1f);
+                float r = c.radius * (f.giant ? Cfg.moves.giant.scale : 1f) * (1f + (power - 1f) * 0.3f);
                 Fx.I.GroundRing(f.Pos, 0.3f, r, 0.55f, new Color(1f, 0.85f, 0.4f, 1f));
                 Fx.I.GroundRing(f.Pos, 0.2f, r * 0.7f, 0.4f, new Color(1f, 1f, 1f, 1f));
                 Fx.I.Dust(f.Pos, 22, 4f);
+                Fx.I.Word(f.Pos + Vector3.up * 2.4f, "BOOM!", new Color(1f, 0.75f, 0.2f), 1.5f);
                 GameManager.I.Fighters.Query(f.Pos, r + 0.4f, victims, f);
                 foreach (var v in victims)
                 {
@@ -54,7 +55,7 @@ namespace Arena
                     if (to.magnitude > r) continue;
                     var dir = to.sqrMagnitude > 0.01f ? to.normalized : Vector3.forward;
                     float k = 1f - to.magnitude / r;
-                    v.TakeHit(new HitInfo { attacker = f, damage = c.damage * (f.giant ? Cfg.moves.giant.damageMul : 1f), kind = HitKind.Launch, dir = dir, push = 2.5f + 4f * k, up = 3f + 3f * k, strong = true, move = MoveKind.Shockwave });
+                    v.TakeHit(new HitInfo { attacker = f, damage = c.damage * (0.55f + 0.45f * k) * (f.giant ? Cfg.moves.giant.damageMul : 1f), kind = HitKind.Heavy, dir = dir, push = 2.5f + 4f * k, force = Cfg.combat.forceWave, strong = true, move = MoveKind.Shockwave });
                 }
                 GameManager.I.Fighters.RemoveHazard(f);
             }

@@ -6,10 +6,11 @@ namespace Arena
     public class PowerPunch : SpecialMove
     {
         Transform glowL, glowR;
+        public override bool Replaceable => true;
 
         protected override void Begin(int count, float now)
         {
-            f.powerPunchCharges = Mathf.Min(Cfg.moves.powerPunch.maxCharges, f.powerPunchCharges + Mathf.Max(1, count));
+            f.powerPunchCharges = Mathf.Min(Cfg.moves.powerPunch.maxCharges, f.powerPunchCharges + Mathf.Max(1, Mathf.RoundToInt(count * power)));
             endsAt = now + Cfg.moves.powerPunch.timeoutSec;
             duration = 0f;
             glowR = Glow(f.rig.handR);
@@ -23,7 +24,7 @@ namespace Arena
             return go.transform;
         }
 
-        public override void Extend(int count, float now)
+        public override void Extend(int count, float pow, float now)
         {
             f.powerPunchCharges = Mathf.Min(Cfg.moves.powerPunch.maxCharges, f.powerPunchCharges + count);
             endsAt = Mathf.Max(endsAt, now + Cfg.moves.powerPunch.timeoutSec);

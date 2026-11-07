@@ -21,6 +21,7 @@ namespace Arena
         int punchIndex;
 
         static readonly List<Fighter> victims = new List<Fighter>(32);
+        public static int AttacksStarted, HitsLanded;
 
         public FighterCombat(Fighter f) { this.f = f; }
 
@@ -55,6 +56,7 @@ namespace Arena
             current = k;
             target = t;
             hitPending = true;
+            AttacksStarted++;
             f.state = FState.Attacking;
             f.motor.Stop();
             if (t != null) f.motor.FaceTo(t.Pos);
@@ -123,8 +125,9 @@ namespace Arena
             float dmgMul = f.giant ? Cfg.moves.giant.damageMul : 1f;
             float range = Range(current) * (f.giant ? Cfg.moves.giant.scale : 1f);
             float arc = c.hitArcDeg;
-            var hit = new HitInfo { attacker = f, kind = HitKind.Light, push = c.lightPush, move = MoveKind.None };
+            var hit = new HitInfo { attacker = f, kind = HitKind.Light, push = c.lightPush, move = MoveKind.None, force = c.forcePunch };
             bool powered = false;
+            var style = ImpactStyle.Punch;
             switch (current)
             {
                 case AttackKind.Punch:
@@ -132,24 +135,27 @@ namespace Arena
                     {
                         powered = true;
                         hit.damage = Cfg.moves.powerPunch.damage;
-                        hit.kind = HitKind.Launch; hit.push = c.launchBackSpeed; hit.up = c.launchUpSpeed * 0.8f;
+                        hit.kind = HitKind.Heavy; hit.push = c.heavyPush; hit.force = c.forcePower;
                         hit.strong = true; hit.move = MoveKind.PowerPunch;
+                        style = ImpactStyle.Power;
                     }
                     else hit.damage = c.punchDamage;
                     break;
                 case AttackKind.Kick:
-                    hit.damage = c.kickDamage; hit.kind = HitKind.Heavy; hit.push = c.heavyPush; hit.strong = true;
+                    hit.damage = c.kickDamage; hit.kind = HitKind.Heavy; hit.push = c.heavyPush; hit.strong = true; hit.force = c.forceKick;
+                    style = ImpactStyle.Kick;
                     break;
                 case AttackKind.Bat:
-                    hit.damage = c.punchDamage * Cfg.moves.bat.damageMul; hit.kind = HitKind.Heavy; hit.push = c.heavyPush * 1.2f; hit.strong = true; hit.move = MoveKind.Bat;
+                    hit.damage = c.punchDamage * Cfg.moves.bat.damageMul; hit.kind = HitKind.Heavy; hit.push = c.heavyPush * 1.2f; hit.strong = true; hit.move = MoveKind.Bat; hit.force = c.forceBat;
+                    style = ImpactStyle.Bat;
                     break;
                 case AttackKind.Shovel:
-                    hit.damage = Cfg.moves.shovel.damage; hit.kind = HitKind.Heavy; hit.push = c.heavyPush * 1.3f; hit.strong = true; hit.move = MoveKind.Shovel;
+                    hit.damage = Cfg.moves.shovel.damage; hit.kind = HitKind.Heavy; hit.push = c.heavyPush * 1.3f; hit.strong = true; hit.move = MoveKind.Shovel; hit.force = c.forceShovel;
+                    style = ImpactStyle.Shovel;
                     arc = Cfg.moves.shovel.arcDeg;
                     break;
             }
             hit.damage *= dmgMul;
-            if (f.giant && hit.kind == HitKind.Heavy) { hit.kind = HitKind.Launch; hit.push = c.launchBackSpeed * 0.8f; hit.up = c.launchUpSpeed * 0.7f; }
 
             var fwd = f.transform.forward; fwd.y = 0; fwd.Normalize();
             GameManager.I.Fighters.Query(f.Pos, range + 0.6f, victims, f);
@@ -167,8 +173,9 @@ namespace Arena
                 bool wasAlive = v.IsAlive;
                 v.TakeHit(h);
                 hits++;
+                HitsLanded++;
                 if (wasAlive && (!v.IsAlive || v.state == FState.Down || v.state == FState.Airborne)) f.knockedSomeoneAt = Time.time;
-                Fx.I.HitBurst(v.Pos + Vector3.up * (1.1f * v.sizeMul), hit.strong);
+                Fx.I.Impact(v.Pos + Vector3.up * (1.1f * v.sizeMul), style);
                 if (current == AttackKind.Punch && !powered) break; // a jab hits one character
             }
             if (powered && hits > 0)

@@ -13,9 +13,9 @@ namespace Arena
         {
             var c = Cfg.moves.giant;
             duration = c.durationSec;
-            endsAt = now + Mathf.Min(Cfg.moves.stackMaxSec, duration * Mathf.Max(1, count));
+            endsAt = now + Mathf.Min(Cfg.moves.stackMaxSec, duration * Mathf.Max(1, count) * power);
             f.giant = true;
-            f.sizeTarget = c.scale;
+            f.sizeTarget = c.scale + 0.15f * (power - 1f);
             glow = Fx.AttachedGlow(f.transform, new Color(1f, 0.4f, 0.9f, 0.9f), 1.4f);
             glowMat = glow.sharedMaterial;
             Fx.I.GroundRing(f.Pos, 0.5f, 2.5f, 0.6f, new Color(1f, 0.5f, 1f, 1f));

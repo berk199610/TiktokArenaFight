@@ -52,16 +52,29 @@ namespace Arena
         IEnumerator Auto()
         {
             DevKeys.I.traffic = true;
+            bool final = System.Environment.CommandLine.Contains("-final");
+            bool finalDone = false;
             float start = Time.time, nextShot = start + 4f, nextLog = start + 5f;
             int frames = 0; float worst = 0f; int shot = 0;
             while (Time.time - start < seconds)
             {
                 frames++;
                 worst = Mathf.Max(worst, Time.unscaledDeltaTime);
+                if (final && !finalDone && Time.time - start > 22f) { finalDone = true; GameManager.I.Command("endRound", null); }
                 if (Time.time >= nextShot) { nextShot += 6f; Shot($"auto_{shot++:00}"); }
                 if (Time.time >= nextLog)
                 {
-                    Debug.Log($"[AutoTest] t={Time.time - start:0} fps={frames / 5f:0.0} worstMs={worst * 1000f:0} alive={GameManager.I.Fighters.AliveCount} state={GameManager.I.State}");
+                    Debug.Log($"[AutoTest] t={Time.time - start:0} fps={frames / 5f:0.0} worstMs={worst * 1000f:0} alive={GameManager.I.Fighters.AliveCount} state={GameManager.I.State} attacks={FighterCombat.AttacksStarted} hits={FighterCombat.HitsLanded} thinks={FighterBrain.Thinks} decides={FighterBrain.Decides} applies={FighterBrain.Applies} rejected={FighterBrain.Rejected}");
+                    if (GameManager.I.Fighters.Active.Count > 0) { var f0 = GameManager.I.Fighters.Active[0]; Debug.Log($"[AutoTest] f0 {f0.Name} st={f0.state} plan={f0.brain.plan} intel={f0.intelligence:0.00} hp={f0.hp:0} target={(f0.brain.target != null ? f0.brain.target.Name : "-")}"); }
+                    var states = new System.Collections.Generic.Dictionary<string, int>();
+                    foreach (var f in GameManager.I.Fighters.Active)
+                    {
+                        string k = f.state + "/" + f.brain.plan;
+                        states[k] = states.TryGetValue(k, out int c) ? c + 1 : 1;
+                    }
+                    var sb = new System.Text.StringBuilder("[AutoTest] states:");
+                    foreach (var kv in states) sb.Append(' ').Append(kv.Key).Append('=').Append(kv.Value);
+                    Debug.Log(sb.ToString());
                     frames = 0; worst = 0f; nextLog += 5f;
                 }
                 yield return null;
@@ -73,6 +86,7 @@ namespace Arena
             var gm = GameManager.I;
             gm.Paused = true;
             gm.Fighters.DespawnAll();
+            gm.Hud.Canvas.enabled = false;
             yield return null;
             int n = CostumeCatalog.Count;
             var fighters = new Fighter[n];
@@ -101,12 +115,13 @@ namespace Arena
             c.minDistance = oldMin; c.maxDistance = oldMax; c.pitchDeg = oldPitch;
             yield return new WaitForSeconds(2.5f);
             gm.Cam.Frozen = true;
-            int[] states = { FighterAnimation.Loco, FighterAnimation.Punch1, FighterAnimation.Kick, FighterAnimation.SpinKick, FighterAnimation.Flex, FighterAnimation.Slam, FighterAnimation.HitBig, FighterAnimation.Fall, FighterAnimation.Lying, FighterAnimation.GetUp, FighterAnimation.Dizzy, FighterAnimation.Dance, FighterAnimation.Tornado, FighterAnimation.Bat, FighterAnimation.Death };
-            string[] names = { "idle", "punch", "kick", "spinkick", "flex", "slam", "hitbig", "fall", "lying", "getup", "dizzy", "dance", "tornado", "bat", "death" };
+            int[] states = { FighterAnimation.Loco, FighterAnimation.Punch1, FighterAnimation.Kick, FighterAnimation.StaggerL, FighterAnimation.StaggerR, FighterAnimation.FallL, FighterAnimation.FallR, FighterAnimation.Fall, FighterAnimation.GetUp, FighterAnimation.DeathFwd, FighterAnimation.DeathSide, FighterAnimation.DeathKnees, FighterAnimation.Death, FighterAnimation.Cocky, FighterAnimation.Tornado };
+            string[] names = { "idle", "punch", "kick", "staggerL", "staggerR", "fallL", "fallR", "fall", "getup", "deathFwd", "deathSide", "deathKnees", "death", "cocky", "tornado" };
             for (int s = 0; s < states.Length; s++)
             {
                 foreach (var f in fighters) f.anim.Play(states[s], 0.05f);
-                float d = states[s] == FighterAnimation.Kick ? 0.36f : states[s] == FighterAnimation.Slam ? 0.6f : states[s] == FighterAnimation.Fall ? 0.55f : states[s] == FighterAnimation.Death ? 1.5f : 0.4f;
+                int st = states[s];
+                float d = st == FighterAnimation.Kick ? 0.36f : (st == FighterAnimation.StaggerL || st == FighterAnimation.StaggerR) ? 0.3f : (st == FighterAnimation.Fall || st == FighterAnimation.FallL || st == FighterAnimation.FallR) ? 0.55f : (st == FighterAnimation.Death || st == FighterAnimation.DeathFwd || st == FighterAnimation.DeathSide || st == FighterAnimation.DeathKnees) ? 1.6f : 0.4f;
                 yield return new WaitForSeconds(d);
                 Shot("gallery_" + s.ToString("00") + "_" + names[s]);
                 yield return new WaitForSeconds(0.25f);

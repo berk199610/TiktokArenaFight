@@ -82,6 +82,8 @@ namespace Arena
         public long streamCoins;
         public float queuedAt;
         public int roundKills;
+        public int streamLikes, streamComments;   // this stream: comment/like supporters level up (user request)
+        public int enteredRound = -1;             // round number when this viewer last entered the arena
 
         // like rate limiting: max N likes counted per second
         public float likeWindowStart;

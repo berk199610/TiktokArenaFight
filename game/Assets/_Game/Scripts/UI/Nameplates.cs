@@ -22,6 +22,9 @@ namespace Arena
         }
 
         class Floater { public Text t; public Vector3 world; public float start; }
+        class WordPop { public Text t; public Vector3 world; public float start, scale, rot; }
+        readonly List<WordPop> words = new List<WordPop>();
+        readonly Stack<Text> wordPool = new Stack<Text>();
 
         RectTransform layer;
         Canvas canvas;
@@ -100,6 +103,28 @@ namespace Arena
             floaters.Add(new Floater { t = t, world = f.transform.position + Vector3.up * (f.HeadHeight + 0.2f) + jitter, start = Time.time });
         }
 
+        /// <summary>Comic hit word ("POW!", "BAM!", "K.O.!") that pops out, tilts and fades (max 6 at once).</summary>
+        public void Word(Vector3 world, string text, Color c, float scale)
+        {
+            if (words.Count >= 4) return;
+            Text t;
+            if (wordPool.Count > 0) { t = wordPool.Pop(); t.gameObject.SetActive(true); }
+            else
+            {
+                t = Ui.Text(layer, "Word", "", 64, c, TextAnchor.MiddleCenter, Ui.FontBlack);
+                t.rectTransform.anchorMin = t.rectTransform.anchorMax = Vector2.zero;
+                t.rectTransform.sizeDelta = new Vector2(320, 90);
+                var o = t.GetComponent<Outline>();
+                if (o != null) { o.effectDistance = new Vector2(4, -4); o.effectColor = new Color(0.1f, 0.05f, 0.1f, 1f); }
+                var sh = t.gameObject.AddComponent<Shadow>();
+                sh.effectDistance = new Vector2(5, -6);
+                sh.effectColor = new Color(0, 0, 0, 0.6f);
+            }
+            t.text = text;
+            t.color = c;
+            words.Add(new WordPop { t = t, world = world + Random.insideUnitSphere * 0.3f, start = Time.time, scale = scale, rot = Random.Range(-14f, 14f) });
+        }
+
         Vector2 ToCanvas(Vector3 screen)
         {
             float k = layer.rect.height / Mathf.Max(1f, Screen.height);
@@ -125,7 +150,7 @@ namespace Arena
                 if (!plates.TryGetValue(f, out var p)) { p = Make(); plates[f] = p; }
                 var world = f.transform.position + Vector3.up * (f.HeadHeight + 0.12f);
                 var sp = cam.WorldToScreenPoint(world);
-                if (sp.z <= 0f) { p.root.gameObject.SetActive(false); continue; }
+                if (sp.z <= 0f || LeaderboardPanel.Covers(sp)) { p.root.gameObject.SetActive(false); continue; }
                 if (!p.root.gameObject.activeSelf) p.root.gameObject.SetActive(true);
                 p.root.anchoredPosition = ToCanvas(sp);
 
@@ -161,6 +186,19 @@ namespace Arena
                 if (p.status.text != st) p.status.text = st;
                 p.status.color = woke ? new Color(1f, 0.9f, 0.2f) : new Color(0.7f, 0.85f, 1f);
                 p.status.rectTransform.anchoredPosition = new Vector2(dull ? Mathf.Sin(now * 2f) * 6f : 0, (showName ? 50 : 18) + (woke ? Mathf.Abs(Mathf.Sin(now * 10f)) * 8f : 0));
+            }
+
+            for (int i = words.Count - 1; i >= 0; i--)
+            {
+                var w = words[i];
+                float age = now - w.start;
+                if (age >= 0.85f) { w.t.gameObject.SetActive(false); wordPool.Push(w.t); words.RemoveAt(i); continue; }
+                var sp = cam.WorldToScreenPoint(w.world + Vector3.up * age * 0.6f);
+                w.t.rectTransform.anchoredPosition = ToCanvas(sp);
+                float pop = age < 0.12f ? Mathf.Lerp(0.2f, 1.35f, age / 0.12f) : age < 0.22f ? Mathf.Lerp(1.35f, 1f, (age - 0.12f) / 0.1f) : 1f;
+                w.t.rectTransform.localScale = Vector3.one * pop * w.scale * 0.75f;
+                w.t.rectTransform.localRotation = Quaternion.Euler(0, 0, w.rot);
+                w.t.color = Ui.WithAlpha(w.t.color, age > 0.6f ? 1f - (age - 0.6f) / 0.25f : 1f);
             }
 
             for (int i = floaters.Count - 1; i >= 0; i--)

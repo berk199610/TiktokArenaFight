@@ -17,7 +17,7 @@ dövüşür, son kalan turu kazanır. Kurallar: [`docs/Arena-Dovusu-Tasarim.pdf`
 |---|---|
 | **C** | Yorum (seçili izleyiciden) |
 | **L** | Beğeni |
-| **1 … 7** | Hediye: 1 Yumruk · 2 Sopa · 3 Kürek · 4 Döner Tekme · 5 Dalga · 6 Dev · 7 Tornado |
+| **1 … 8** | Hediye: 1 Yumruk · 2 Sopa · 3 Kürek · 4 Döner Tekme · 5 Dalga · 6 Dev · 7 Şimşek · 8 Tornado |
 | **N / V** | 1 / 10 yeni izleyici yorumla girer |
 | **T** | Kalabalık botu aç/kapa (sahte izleyiciler sürekli yorum/beğeni/hediye atar) |
 | **E** | Turu bitir (son savaşa geç / kazananı belirle) |
@@ -30,6 +30,21 @@ dövüşür, son kalan turu kazanır. Kurallar: [`docs/Arena-Dovusu-Tasarim.pdf`
 (`http://localhost:8788`), derlenmiş oyunu açar. Panelden: tek izleyici olarak yorum/beğeni/7 hediye,
 kalabalık botu kaydırıcıları, duraklat, turu bitir, skor tablosunu sıfırla, tüm kayıtları sil, kullanıcıyı çıkar.
 TikTok bağlantısı (Aşama 5) henüz yok: `bridge/src/tiktok.js`.
+
+### Unity'de "Scale" ayarı
+Game penceresindeki **Scale** kaydırıcısı sadece önizlemenin yakınlığıdır, oyunu değiştirmez. 1080x1920 dikey ekran
+editöre sığmadığı için **0.24x gibi en küçük değerde ekranın tamamını** (TikTok'ta görünecek hâlini) görürsün; 1x gerçek
+piksel boyutudur ve sadece bir parçasını gösterir. Daha büyük görmek için Game sekmesini büyüt (Shift+Space).
+
+### TikTok hediyelerini ayarlamak (config.json → gifts)
+- **Her hediye çalışır:** kademe, tek hediyenin coin değerine göre seçilir: 1–4 Yumruk, 5–29 Sopa, 30–99 Kürek,
+  100–299 Döner Tekme, 300–999 Dalga, 1.000–2.499 Dev, 2.500–4.999 Şimşek, 5.000+ Tornado. 6 coinlik bir hediye de
+  Sopa yapar. Aynı aralıkta pahalı olan daha güçlüdür (ör. 4.000 coin Şimşek, 2.500'lükten daha çok yıldırım düşürür).
+- **Kendi hediye resmin:** game/Assets/StreamingAssets/GiftIcons/ klasörüne PNG koy (ör. rose.png) ve
+  gifts.tiers içinde ilgili kademenin "icon": "rose.png" alanına yaz. Rehberde coin yerine o resim çıkar.
+- **Belirli bir hediye = belirli hareket:** gifts.catalog listesine { "name": "Rose", "coins": 1, "move": "Tornado" }
+  gibi satır ekle (move boşsa coin aralığı kullanılır). Hareket adları: PowerPunch, Bat, Shovel, SpinKick, Shockwave,
+  Giant, Thunder, Tornado.
 
 ### Sayıları değiştirmek
 Tüm sayılar `game/Assets/StreamingAssets/config.json` içinde (derlenmiş oyunda
@@ -68,11 +83,35 @@ Tüm sayılar `game/Assets/StreamingAssets/config.json` içinde (derlenmiş oyun
 - **Kalıcı kayıtlar**: `%USERPROFILE%\AppData\LocalLow\Berk\Arena Dovusu\arena_records.json`.
 - **Performans**: bu bilgisayarda (entegre Radeon) 50+ karakterle 60 FPS ölçüldü.
 
+## 2. tur geliştirmeleri (Berk'in 17 maddelik listesi)
+- Skor tablosu: arkada asılı büyük ekran, hep kameraya dönük, duvar arkasında kaybolmaz; **TOP 10**, #1 altın + küçük taç,
+  #2 gümüş, #3 bronz, sıra değişince kayan satırlar ve oklar, devirmede parlama ve "+10", savaşta olanlara yeşil nokta,
+  hediye atanlara hediye ikonu, lider değişince "NEW LEADER!".
+- Darbe sistemi gücüne göre: her vuruş uçurmaz; hasar × güç × (can azaldıkça artan kırılganlık) birikir → hafif sarsılma,
+  sağa / sola / geriye sendeleme, yere düşme, en güçlüde havaya uçma. Sağa sola dağılarak düşerler.
+- Yeni animasyonlar: dövüş duruşu (zıplayarak bekleme), sağa/sola sendeleme, yana düşme, yüz üstü / yana / diz çöküp
+  ölme, kollarını kavuşturup alay. Karakterler artık boş durmaz (ayak hareketi, sersemken yalpalama, rakip arama).
+- Emoji tepkileri (sinirli, korkmuş, sinsi, gülen, havalı, sersem, yorgun, aşık, yıldız gözlü, "HELP!").
+- Seviye kıyafetleri: yorum/beğeni yapanlar bileklik → omuzluk + kemer → kahraman pelerini; hediye atanlar taç →
+  altın zırh → kraliyet pelerini + büyük taç → mor pelerin → kanat + hale. Geçişte ışık sütunu ve "LEVEL UP! / VIP! /
+  KING! / LEGEND!".
+- Giriş: tur başında "JOIN NOW!" geri sayımı (15 sn), ölen kısa bir duraktan sonra yorumla hemen geri döner (savaş boyunca),
+  hediye her zaman.
+- Elinde sopa/kürek varken gelen yeni hediye silahı hemen bıraktırır; Dev modu diğer hareketlerle birlikte çalışır.
+- Tornado çok daha hızlı döner, üç katlı huni, üstte bulut, etrafa savrulan döküntü, içine çekme.
+- Yeni kademe **Şimşek** (2.500–4.999 coin): rakiplerin üstüne art arda yıldırım.
+- Vuruş efektleri çeşitlendi: kıvılcım çizgileri, parlama, "POW! BAM! BONK! CLANG! SMASH! ZAP! K.O.!" yazıları.
+- Ateş halkası 11,6 m'den 6,5 m'ye yumuşakça daralır, katmanlı alev duvarı + kor parçacıkları; sonda herkes rakip arar.
+- Kamera biraz daha yakın, hız sınırlı yumuşak takip, kendiliğinden hafifçe yaklaşıp uzaklaşır.
+- Duvar arkası: karakterler duvarın arkasında kalınca mavi bir siluetleri görünür (x-ray).
+- Ekrandaki her şey basit İngilizce + ikon.
+
 ## Eksikler / sonraki adımlar
 - Aşama 5: TikTok LIVE bağlantısı (`bridge/src/tiktok.js`) ve az izleyicili deneme yayınları.
 - Ses yok.
 - Kostüm aksesuarları basit şekillerden; istenirse gerçek model parçalarıyla değiştirilebilir.
-- 100 karakterde FPS henüz TikTok LIVE Studio yayınıyla birlikte ölçülmedi.
+- 100 karakterde FPS henüz TikTok LIVE Studio yayınıyla birlikte ölçülmedi (60+ karakterle tek başına 60 FPS).
+- X-ray siluetleri kuruldu ama bir karakterin tam duvar arkasında kaldığı an ekran görüntüsüyle ayrıca doğrulanmadı.
 
 ## Klasörler
 ```

@@ -10,13 +10,14 @@ namespace Arena
     {
         readonly MoveKind weaponKind;
         TrailRenderer trail;
+        public override bool Replaceable => true;
 
         public WeaponBuff(MoveKind k) { weaponKind = k; }
 
         protected override void Begin(int count, float now)
         {
             duration = weaponKind == MoveKind.Bat ? Cfg.moves.bat.durationSec : Cfg.moves.shovel.durationSec;
-            endsAt = now + Mathf.Min(Cfg.moves.stackMaxSec, duration * Mathf.Max(1, count));
+            endsAt = now + Mathf.Min(Cfg.moves.stackMaxSec, duration * Mathf.Max(1, count) * power);
             f.EquipWeapon(weaponKind);
             if (f.weaponObj != null)
             {

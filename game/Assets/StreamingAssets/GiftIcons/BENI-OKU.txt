@@ -1,0 +1,1 @@
+Buraya TikTok hediye resimlerini PNG olarak koyun (ör. rose.png) ve config.json > gifts > tiers > icon alanına dosya adını yazın.

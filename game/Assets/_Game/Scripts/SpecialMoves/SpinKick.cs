@@ -20,7 +20,7 @@ namespace Arena
             var c = Cfg.moves.spinKick;
             duration = c.durationSec;
             endsAt = now + Mathf.Min(Cfg.moves.stackMaxSec, duration * Mathf.Max(1, count)) + 0.3f;
-            spinsLeft = c.spins * Mathf.Max(1, count);
+            spinsLeft = Mathf.RoundToInt(c.spins * Mathf.Max(1, count) * power);
             hitInterval = c.durationSec / Mathf.Max(1, c.spins);
             nextHitAt = now + hitInterval * 0.5f;
             f.spinSpeed = 360f / hitInterval;
@@ -30,9 +30,9 @@ namespace Arena
             GameManager.I.Fighters.AddHazard(f, c.radius);
         }
 
-        public override void Extend(int count, float now)
+        public override void Extend(int count, float pow, float now)
         {
-            base.Extend(count, now);
+            base.Extend(count, pow, now);
             spinsLeft += Cfg.moves.spinKick.spins * count;
         }
 
@@ -48,7 +48,7 @@ namespace Arena
             {
                 nextHitAt = now + hitInterval;
                 spinsLeft--;
-                float r = c.radius * (f.giant ? Cfg.moves.giant.scale : 1f);
+                float r = c.radius * (f.giant ? Cfg.moves.giant.scale : 1f) * (1f + (power - 1f) * 0.25f);
                 GameManager.I.Fighters.Query(f.Pos, r + 0.4f, victims, f);
                 foreach (var v in victims)
                 {
@@ -56,8 +56,8 @@ namespace Arena
                     var to = v.Pos - f.Pos; to.y = 0;
                     if (to.magnitude > r + 0.3f) continue;
                     var dir = to.sqrMagnitude > 0.01f ? to.normalized : Vector3.forward;
-                    v.TakeHit(new HitInfo { attacker = f, damage = c.damagePerSpin * (f.giant ? Cfg.moves.giant.damageMul : 1f), kind = HitKind.Launch, dir = dir, push = c.push, up = 3.5f, strong = true, move = MoveKind.SpinKick });
-                    Fx.I.HitBurst(v.Pos + Vector3.up * 1.1f, true);
+                    v.TakeHit(new HitInfo { attacker = f, damage = c.damagePerSpin * (f.giant ? Cfg.moves.giant.damageMul : 1f), kind = HitKind.Heavy, dir = dir, push = c.push, force = Cfg.combat.forceSpin, strong = true, move = MoveKind.SpinKick });
+                    Fx.I.Impact(v.Pos + Vector3.up * 1.1f, ImpactStyle.Wind);
                 }
                 Fx.I.GroundRing(f.Pos, 0.4f, r, 0.35f, new Color(0.7f, 0.9f, 1f, 0.9f));
             }

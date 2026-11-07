@@ -24,6 +24,7 @@ namespace Arena
         public FireRing Ring;
         public Hud Hud;
         public Nameplates Names;
+        public EmoteSystem Emotes;
         public LeaderboardPanel Board;
         public BridgeClient Bridge;
 
@@ -34,6 +35,8 @@ namespace Arena
         public bool Paused;
         public Viewer TopGifter { get; private set; }
         public string WinnerText { get; private set; }
+        public string WinnerName { get; private set; }
+        public bool WinnerIsBot { get; private set; }
         public string WinnerSub { get; private set; }
 
         int peakAlive;
@@ -74,13 +77,19 @@ namespace Arena
             Cam = camGo.AddComponent<ArenaCamera>();
             Cam.Init();
 
-            Board = LeaderboardPanel.Create(World.boardAnchor);
+            // paint every icon once at start (no hitch mid-stream)
+            foreach (var n in new[] { "fist", "bat", "shovel", "spin", "wave", "giant", "thunder", "tornado", "crown", "star", "swords", "skull", "heart", "comment", "gift", "coin", "arrowUp", "arrowDown", "dot", "person", "fire", "sos",
+                                      "angry", "tired", "sneaky", "laugh", "cool", "scared", "dizzy", "love", "starstruck", "happy" })
+                Icons.Get(n);
+            Board = LeaderboardPanel.Create(transform);
             var uiGo = new GameObject("UI");
             uiGo.transform.SetParent(transform, false);
             Hud = uiGo.AddComponent<Hud>();
             Hud.Init();
             Names = uiGo.AddComponent<Nameplates>();
             Names.Init(Hud.Canvas);
+            Emotes = uiGo.AddComponent<EmoteSystem>();
+            Emotes.Init();
 
             Bridge = new BridgeClient(Cfg.bridge.url, Cfg.bridge.reconnectSec);
             gameObject.AddComponent<DevKeys>();
@@ -203,12 +212,14 @@ namespace Arena
             foreach (var f in Fighters.Active) if (f.IsAlive) { w = f; break; }
             if (w == null) w = lastDied;
             WinnerFighter = w;
-            if (w == null) { WinnerText = "BERABERE"; WinnerSub = ""; return; }
+            if (w == null) { WinnerText = "DRAW"; WinnerName = "DRAW"; WinnerIsBot = false; WinnerSub = ""; return; }
             var v = w.viewer;
+            WinnerName = v.DisplayName;
+            WinnerIsBot = v.isBot;
             if (v.isBot)
             {
-                WinnerText = "Bot kazandı";
-                WinnerSub = v.DisplayName;
+                WinnerText = "BOT WINS";
+                WinnerSub = "";
             }
             else
             {
@@ -216,8 +227,8 @@ namespace Arena
                 v.record.points += Cfg.points.win;
                 Persistence.MarkDirty();
                 Persistence.Save();
-                WinnerText = "KAZANAN: " + v.DisplayName;
-                WinnerSub = Ui.Thousands(v.record.points) + " puan";
+                WinnerText = "WINNER";
+                WinnerSub = "+" + Cfg.points.win + "   " + Ui.Thousands(v.record.points) + " PTS";
             }
             if (w.IsAlive) w.Victory();
             Fx.I.Confetti(w.Pos);
@@ -249,7 +260,7 @@ namespace Arena
                 Persistence.MarkDirty();
                 Board?.OnKill(killer.viewer, boss);
                 if (killer.IsGifter || boss)
-                    Hud?.Feed(boss ? $"{killer.Name} BOSS'U DEVİRDİ!" : $"{killer.Name} devirdi: {victim.Name}", boss ? new Color(1f, 0.55f, 0.2f) : new Color(1f, 0.85f, 0.3f));
+                    Hud?.FeedIcon(boss ? "crown" : "skull", boss ? $"{Ui.Short(killer.Name, 14)} KO BOSS!" : $"{Ui.Short(killer.Name, 12)} KO {Ui.Short(victim.Name, 12)}", boss ? new Color(1f, 0.55f, 0.2f) : new Color(1f, 0.85f, 0.3f));
             }
         }
 

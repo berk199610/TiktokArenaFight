@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Arena
 {
@@ -62,6 +63,8 @@ namespace Arena
         }
     }
 
+    public enum ImpactStyle { Punch, Kick, Bat, Shovel, Power, Wind, Thunder, KO }
+
     /// <summary>
     /// All effects of DESIGN §6.4 built from code: one shared particle system per effect type (Emit at a position,
     /// no per-effect allocations), pooled ground rings, light pillars, lightning bolts, wind rings and tornado cones.
@@ -70,7 +73,7 @@ namespace Arena
     {
         public static Fx I { get; private set; }
 
-        ParticleSystem stars, smoke, dust, sparkle, confetti, fire, heal, sweat;
+        ParticleSystem stars, smoke, dust, sparkle, confetti, fire, heal, sweat, streaks, flash, debris, embers;
 
         class Anim
         {
@@ -96,6 +99,10 @@ namespace Arena
             fire = MakePS("Fire", FxTex.Soft, true, 0.7f, 1200);
             heal = MakePS("Heal", FxTex.Spark, true, 0.9f, 200);
             sweat = MakePS("Sweat", FxTex.Soft, false, 0.6f, 100, true);
+            streaks = MakePS("Streaks", FxTex.Soft, true, 0.2f, 400, false, true);
+            flash = MakePS("Flash", FxTex.Soft, true, 0.12f, 120);
+            debris = MakePS("Debris", FxTex.Smoke, false, 0.9f, 600);
+            embers = MakePS("Embers", FxTex.Spark, true, 1.2f, 600);
             var lgo = new GameObject("FlashLight");
             lgo.transform.SetParent(transform, false);
             flashLight = lgo.AddComponent<Light>();
@@ -105,7 +112,7 @@ namespace Arena
             flashLight.color = new Color(0.75f, 0.85f, 1f);
         }
 
-        ParticleSystem MakePS(string name, Texture tex, bool additive, float life, int max, bool gravity = false)
+        ParticleSystem MakePS(string name, Texture tex, bool additive, float life, int max, bool gravity = false, bool stretch = false)
         {
             var go = new GameObject("PS_" + name);
             go.transform.SetParent(transform, false);
@@ -135,7 +142,8 @@ namespace Arena
             rot.z = new ParticleSystem.MinMaxCurve(-6f, 6f);
             var r = go.GetComponent<ParticleSystemRenderer>();
             r.sharedMaterial = Mats.FxNew(additive, tex, Color.white);
-            r.renderMode = ParticleSystemRenderMode.Billboard;
+            r.renderMode = stretch ? ParticleSystemRenderMode.Stretch : ParticleSystemRenderMode.Billboard;
+            if (stretch) { r.velocityScale = 0.06f; r.lengthScale = 1.2f; }
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = false;
             r.sortMode = ParticleSystemSortMode.None;
@@ -166,6 +174,100 @@ namespace Arena
                 var c = Color.Lerp(new Color(1f, 0.95f, 0.5f), new Color(1f, 0.6f, 0.2f), UnityEngine.Random.value);
                 Emit(stars, p, RandDir(0.6f) * (strong ? 4.5f : 2.5f), strong ? 0.42f : 0.3f, c, strong ? 0.35f : 0.25f);
             }
+        }
+
+        static readonly string[] kickWords = { "BAM!", "WHAM!", "POW!" };
+
+        /// <summary>Hit effect, different for every kind of hit (user request: not only stars).</summary>
+        public void Impact(Vector3 p, ImpactStyle style, bool allowWord = true)
+        {
+            switch (style)
+            {
+                case ImpactStyle.Punch:
+                    Flash(p, new Color(1f, 1f, 0.95f, 0.9f), 0.7f);
+                    Streak(p, new Color(1f, 0.95f, 0.8f), 5, 5f);
+                    if (allowWord && Random.value < 0.1f) Word(p + Vector3.up * 0.5f, "POW!", new Color(1f, 0.9f, 0.3f), 0.9f);
+                    break;
+                case ImpactStyle.Kick:
+                    Flash(p, new Color(1f, 0.7f, 0.3f, 0.95f), 1.1f);
+                    Streak(p, new Color(1f, 0.8f, 0.4f), 8, 7f);
+                    HitBurst(p, false);
+                    if (allowWord && Random.value < 0.22f) Word(p + Vector3.up * 0.5f, kickWords[Random.Range(0, kickWords.Length)], new Color(1f, 0.6f, 0.2f), 1.1f);
+                    break;
+                case ImpactStyle.Bat:
+                    Flash(p, new Color(1f, 0.85f, 0.4f, 0.9f), 1f);
+                    HitBurst(p, true);
+                    if (allowWord && Random.value < 0.5f) Word(p + Vector3.up * 0.5f, "BONK!", new Color(1f, 0.8f, 0.35f), 1.1f);
+                    break;
+                case ImpactStyle.Shovel:
+                    Flash(p, new Color(0.8f, 0.9f, 1f, 0.95f), 1.1f);
+                    Streak(p, new Color(0.7f, 0.85f, 1f), 12, 8f);
+                    if (allowWord && Random.value < 0.5f) Word(p + Vector3.up * 0.5f, "CLANG!", new Color(0.7f, 0.9f, 1f), 1.1f);
+                    break;
+                case ImpactStyle.Power:
+                    Flash(p, new Color(1f, 0.55f, 0.15f, 1f), 2f);
+                    Streak(p, new Color(1f, 0.7f, 0.3f), 14, 10f);
+                    HitBurst(p, true);
+                    GroundRing(p, 0.2f, 1.6f, 0.35f, new Color(1f, 0.6f, 0.2f, 1f));
+                    if (allowWord) Word(p + Vector3.up * 0.6f, "SMASH!", new Color(1f, 0.45f, 0.15f), 1.35f);
+                    break;
+                case ImpactStyle.Wind:
+                    Streak(p, new Color(0.85f, 0.95f, 1f), 6, 6f);
+                    if (allowWord && Random.value < 0.08f) Word(p + Vector3.up * 0.5f, "WHOOSH!", new Color(0.8f, 0.95f, 1f), 0.9f);
+                    break;
+                case ImpactStyle.Thunder:
+                    Flash(p, new Color(0.6f, 0.8f, 1f, 1f), 2.2f);
+                    Streak(p, new Color(0.6f, 0.85f, 1f), 10, 9f);
+                    if (allowWord && Random.value < 0.5f) Word(p + Vector3.up * 0.6f, "ZAP!", new Color(0.6f, 0.9f, 1f), 1.2f);
+                    break;
+                case ImpactStyle.KO:
+                    Flash(p, new Color(1f, 0.3f, 0.3f, 1f), 1.6f);
+                    for (int i = 0; i < 8; i++) Emit(stars, p, RandDir(0.8f) * 3.5f, 0.4f, new Color(1f, 0.85f, 0.3f), 0.5f);
+                    if (allowWord) Word(p + Vector3.up * 0.8f, "K.O.!", new Color(1f, 0.3f, 0.25f), 1.4f);
+                    break;
+            }
+        }
+
+        void Flash(Vector3 p, Color c, float size) => Emit(flash, p, Vector3.zero, size, c, 0.12f);
+
+        void Streak(Vector3 p, Color c, int n, float speed)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                var d = Random.onUnitSphere;
+                d.y = d.y * 0.6f + 0.15f;
+                Emit(streaks, p, d.normalized * speed * Random.Range(0.6f, 1.2f), Random.Range(0.06f, 0.11f), c, Random.Range(0.12f, 0.22f));
+            }
+        }
+
+        /// <summary>Comic word popping out of a hit ("POW!", "BAM!", "K.O.!"), drawn by the name layer.</summary>
+        public void Word(Vector3 p, string text, Color c, float scale)
+        {
+            if (GameManager.I != null && GameManager.I.Names != null) GameManager.I.Names.Word(p, text, c, scale);
+        }
+
+        /// <summary>Dust and debris thrown around a tornado funnel.</summary>
+        public void TornadoDebris(Vector3 center, float radius, float now)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                float a = Random.value * Mathf.PI * 2f;
+                float r = radius * Random.Range(0.7f, 1.5f);
+                float h = Random.Range(0.1f, 4.2f);
+                var radial = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
+                var tangent = Vector3.Cross(Vector3.up, radial);
+                var pos = center + radial * r + Vector3.up * h;
+                var vel = tangent * Random.Range(6f, 11f) + Vector3.up * Random.Range(1f, 3f) + radial * 0.8f;
+                bool dark = Random.value < 0.4f;
+                var col = dark ? new Color(0.35f, 0.28f, 0.22f, 0.9f) : new Color(0.78f, 0.7f, 0.58f, 0.75f);
+                Emit(debris, pos, vel, dark ? Random.Range(0.12f, 0.25f) : Random.Range(0.5f, 1.0f), col, Random.Range(0.4f, 0.8f));
+            }
+        }
+
+        /// <summary>Rising sparks of the fire ring.</summary>
+        public void Ember(Vector3 p)
+        {
+            Emit(embers, p, new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(1.5f, 3.5f), Random.Range(-0.4f, 0.4f)), Random.Range(0.06f, 0.14f), new Color(1f, Random.Range(0.4f, 0.8f), 0.15f), Random.Range(0.8f, 1.4f));
         }
 
         public void Dust(Vector3 p, int n = 8, float spread = 1.5f)
@@ -360,15 +462,22 @@ namespace Arena
             root.SetParent(parent, false);
             if (tornado)
             {
-                var m1 = Mats.FxNew(false, FxTex.Stripes, new Color(0.9f, 0.88f, 0.8f, 0.95f));
-                m1.SetVector("_Scroll", new Vector4(-2.5f, 0.6f, 0, 0));
+                // three funnels (outer, swirl, dark core), a dark cloud on top and a dust skirt at the bottom
+                var m1 = Mats.FxNew(false, FxTex.Stripes, new Color(0.92f, 0.9f, 0.85f, 0.95f));
+                m1.SetVector("_Scroll", new Vector4(-3.2f, 0.9f, 0, 0));
                 m1.SetTextureScale("_MainTex", new Vector2(2f, 1f));
-                MeshKit.Part("Cone", MeshKit.Tube(0.45f, 2.1f, 32), m1, root, new Vector3(0, 0.1f, 0), Vector3.zero, new Vector3(1f, 4.2f, 1f));
-                var m2 = Mats.FxNew(true, FxTex.Stripes, new Color(0.7f, 0.8f, 1f, 0.8f));
-                m2.SetVector("_Scroll", new Vector4(-3.5f, 1.0f, 0, 0));
-                MeshKit.Part("Cone2", MeshKit.Tube(0.6f, 2.6f, 32), m2, root, new Vector3(0, 0.1f, 0), new Vector3(0, 90, 0), new Vector3(1f, 3.6f, 1f));
-                var m3 = Mats.FxNew(false, FxTex.Soft, new Color(0.75f, 0.68f, 0.55f, 0.6f));
-                MeshKit.Part("DustDisc", MeshKit.Quad, m3, root, new Vector3(0, 0.15f, 0), new Vector3(90, 0, 0), new Vector3(4.5f, 4.5f, 1f));
+                MeshKit.Part("Funnel", MeshKit.Tube(0.45f, 2.5f, 36), m1, root, new Vector3(0, 0.05f, 0), Vector3.zero, new Vector3(1f, 5.2f, 1f));
+                var m2 = Mats.FxNew(true, FxTex.Stripes, new Color(0.7f, 0.82f, 1f, 0.9f));
+                m2.SetVector("_Scroll", new Vector4(-4.5f, 1.4f, 0, 0));
+                m2.SetTextureScale("_MainTex", new Vector2(3f, 1f));
+                MeshKit.Part("Swirl", MeshKit.Tube(0.65f, 3.1f, 36), m2, root, new Vector3(0, 0.05f, 0), new Vector3(0, 90, 0), new Vector3(1f, 4.6f, 1f));
+                var m3 = Mats.FxNew(false, FxTex.Stripes, new Color(0.35f, 0.33f, 0.4f, 0.85f));
+                m3.SetVector("_Scroll", new Vector4(-5f, 2f, 0, 0));
+                MeshKit.Part("Core", MeshKit.Tube(0.25f, 1.5f, 24), m3, root, new Vector3(0, 0.05f, 0), new Vector3(0, 45, 0), new Vector3(1f, 5.4f, 1f));
+                var m4 = Mats.FxNew(false, FxTex.Smoke, new Color(0.3f, 0.3f, 0.36f, 0.85f));
+                MeshKit.Part("Cloud", MeshKit.Quad, m4, root, new Vector3(0, 5.3f, 0), new Vector3(90, 0, 0), new Vector3(7.5f, 7.5f, 1f));
+                var m5 = Mats.FxNew(false, FxTex.Soft, new Color(0.75f, 0.66f, 0.52f, 0.7f));
+                MeshKit.Part("DustSkirt", MeshKit.Quad, m5, root, new Vector3(0, 0.15f, 0), new Vector3(90, 0, 0), new Vector3(6f, 6f, 1f));
             }
             else
             {

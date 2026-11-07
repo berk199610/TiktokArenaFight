@@ -46,15 +46,24 @@ namespace Arena
                 case ViewerState.InArena:
                     return;
                 case ViewerState.Dead:
-                    v.interactedSinceDeath = true;  // counted when the penalty ends
+                    // the dead come back straight away with a comment (user request), after a short death pause
+                    if (now >= v.deadUntil && CanReenterByComment(v) && HasRoom) { SpawnAtGate(v, now, false); return; }
+                    v.interactedSinceDeath = true;  // counted when the pause ends
                     return;
                 case ViewerState.Queued:
                     return;
                 default: // Watching, WaitingReentry
-                    if (GM.CommentEntryOpen && HasRoom && queue.Count == 0) SpawnAtGate(v, now, false);
+                    if ((GM.CommentEntryOpen || CanReenterByComment(v)) && HasRoom && queue.Count == 0) SpawnAtGate(v, now, false);
                     else Enqueue(v, now);
                     return;
             }
+        }
+
+        /// <summary>Somebody who already fought this round may come back with a comment for the whole battle.</summary>
+        bool CanReenterByComment(Viewer v)
+        {
+            if (GM.CommentEntryOpen) return true;
+            return Cfg.roster.reentryByCommentUntilFinal && GM.State == RoundState.Battle && v.enteredRound == GM.RoundNo;
         }
 
         void Enqueue(Viewer v, float now)
@@ -67,12 +76,12 @@ namespace Arena
         }
 
         /// <summary>A gift: enters / revives at once (making room if needed), then the move runs.</summary>
-        public void OnGift(Viewer v, int coins, int count, MoveKind move, float now)
+        public void OnGift(Viewer v, int coins, int count, MoveKind move, float power, string giftName, float now)
         {
             if (!GM.GiftEntryOpen && (v.fighter == null || !v.fighter.IsAlive))
             {
                 // final battle / winner screen: the gift is kept and runs first thing next round (doc §9)
-                v.pendingGifts.Add(new PendingGift { coins = coins, count = count });
+                v.pendingGifts.Add(new PendingGift { coins = coins, count = count, giftName = giftName });
                 if (v.state != ViewerState.Queued) Enqueue(v, now);
                 return;
             }
@@ -92,7 +101,7 @@ namespace Arena
                     f.hp = hp;
                 }
             }
-            f.specials.Enqueue(move, count, now);
+            f.specials.Enqueue(move, count, power, now);
         }
 
         void MakeRoom(float now)
@@ -123,12 +132,17 @@ namespace Arena
         {
             var gate = GM.World.gates[gateToggle++ % 2];
             gate.Strike();
-            var runTo = Vector3.Lerp(gate.SpawnPoint, Vector3.zero, 0.55f) + new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-1.5f, 1.5f));
+            var runTo = Vector3.Lerp(gate.SpawnPoint, Vector3.zero, Random.Range(0.55f, 0.9f)) + new Vector3(Random.Range(-3f, 3f), 0, Random.Range(-3f, 3f));
             var f = GM.Fighters.Spawn(v, gate.SpawnPoint + Random.insideUnitSphere.WithY(0) * 0.4f, runTo, now);
             v.interactedSinceDeath = false;
+            v.enteredRound = GM.RoundNo;
             if (v.pendingGifts.Count > 0)
             {
-                foreach (var g in v.pendingGifts) f.specials.Enqueue(GiftResolver.Resolve(g.coins), g.count, now);
+                foreach (var g in v.pendingGifts)
+                {
+                    var mk = GiftResolver.Resolve(g.coins, g.giftName, out float pw);
+                    f.specials.Enqueue(mk, g.count, pw, now);
+                }
                 v.pendingGifts.Clear();
             }
             GM.OnFighterEntered(f);
@@ -209,7 +223,7 @@ namespace Arena
                 if (v.isBot) { v.state = ViewerState.Watching; continue; }
                 if (v.interactedSinceDeath)
                 {
-                    if (gm.CommentEntryOpen && HasRoom) SpawnAtGate(v, now, false);
+                    if (CanReenterByComment(v) && HasRoom) SpawnAtGate(v, now, false);
                     else Enqueue(v, now);
                 }
                 else v.state = ViewerState.WaitingReentry;

@@ -20,6 +20,7 @@ namespace Arena
             public float inactiveAfterSec = 120;
             public float giftProtectionSec = 300;
             public float evictActivityWindowSec = 120;
+            public bool reentryByCommentUntilFinal = true; // dead players come back with a comment during the whole battle
             public int queueMax = 300;
         }
 
@@ -45,7 +46,7 @@ namespace Arena
 
         [Serializable] public class Death
         {
-            public float lieSec = 2, penaltySec = 40, reviveMinHp = 500;
+            public float lieSec = 2, penaltySec = 3, reviveMinHp = 500;
         }
 
         [Serializable] public class Bots
@@ -62,6 +63,11 @@ namespace Arena
             public float lightPush = 0.6f, heavyPush = 3.5f, heavyStaggerSec = 0.6f, knockdownSec = 1f;
             public float launchUpSpeed = 5.5f, launchBackSpeed = 7f, gravity = 20f, wallBounce = 0.6f;
             public float superHitFlyDamage = 50;
+            // reaction by force (user request: not every hit throws people; strength decides)
+            public float poiseDecayPerSec = 55, staggerImpact = 28, knockdownPoise = 95, launchPoise = 135;
+            public float launchMinBack = 3f, launchMaxBack = 9f, launchMinUp = 2.5f, launchMaxUp = 7f, sideSpreadDeg = 35f;
+            public float forcePunch = 1f, forceKick = 1.3f, forceBat = 1.4f, forceShovel = 1.3f, forcePower = 1.7f;
+            public float forceSpin = 1.4f, forceWave = 1.5f, forceTornado = 1.25f, forceThunder = 1.4f, giantForceMul = 1.4f;
         }
 
         [Serializable] public class PowerPunchCfg { public float damage = 60; public int maxCharges = 5; public float timeoutSec = 12; }
@@ -70,7 +76,8 @@ namespace Arena
         [Serializable] public class SpinKickCfg { public float durationSec = 3, radius = 2f, damagePerSpin = 50; public int spins = 3; public float push = 4f; }
         [Serializable] public class ShockwaveCfg { public float radius = 4f, damage = 150, jumpSec = 0.55f; }
         [Serializable] public class GiantCfg { public float durationSec = 20, scale = 1.4f, damageMul = 2f; }
-        [Serializable] public class TornadoCfg { public float durationSec = 10, tickSec = 0.5f, damage = 40, radius = 1.8f, speed = 3.2f, fling = 6f; }
+        [Serializable] public class TornadoCfg { public float durationSec = 10, tickSec = 0.5f, damage = 40, radius = 1.8f, speed = 3.2f, fling = 6f, spinDegPerSec = 1440f, pull = 2.5f; }
+        [Serializable] public class ThunderCfg { public int strikes = 6; public float intervalSec = 0.45f, damage = 110, radius = 1.8f; }
 
         [Serializable] public class Moves
         {
@@ -81,13 +88,14 @@ namespace Arena
             public ShockwaveCfg shockwave = new ShockwaveCfg();
             public GiantCfg giant = new GiantCfg();
             public TornadoCfg tornado = new TornadoCfg();
+            public ThunderCfg thunder = new ThunderCfg();
             public float stackMaxSec = 60;
             public int queueMax = 3;
             public float powerPoseSec = 0.5f;
         }
 
-        [Serializable] public class GiftTier { public int minCoins; public string move; public string label; }
-        [Serializable] public class GiftItem { public string name; public int coins; }
+        [Serializable] public class GiftTier { public int minCoins; public string move; public string label; public string icon; }
+        [Serializable] public class GiftItem { public string name; public int coins; public string move; public float power; }
 
         [Serializable] public class Gifts
         {
@@ -108,9 +116,9 @@ namespace Arena
 
         [Serializable] public class Round
         {
-            public float prepSec = 10; public float entriesPerSec = 5; public float prepRecentSec = 120;
+            public float prepSec = 15; public float entriesPerSec = 5; public float prepRecentSec = 120;
             public float finalAfterSec = 180; public int finalAtAlive = 10;
-            public float ringStartRadius = 12, ringEndRadius = 4, ringShrinkSec = 60, ringDps = 30;
+            public float ringStartRadius = 11.6f, ringEndRadius = 6.5f, ringShrinkSec = 75, ringDps = 30;
             public float winnerSec = 8, maxRoundSec = 330;
         }
 
@@ -120,11 +128,14 @@ namespace Arena
 
         [Serializable] public class CameraCfg
         {
-            public float pitchDeg = 42, yawDeg = 45, fov = 45, minDistance = 23, maxDistance = 29, spreadForMax = 7;
-            public float followSec = 1.5f, maxOffsetFromCenter = 5, maxOffsetForward = 2, giftNudgeWeight = 6, lookAhead = 2.6f; public int giftNudgeMinCoins = 100;
+            public float pitchDeg = 42, yawDeg = 45, fov = 45, minDistance = 16.5f, maxDistance = 21.5f, spreadForMax = 7;
+            public float followSec = 1.5f, maxOffsetFromCenter = 6, maxOffsetForward = 3, giftNudgeWeight = 6, lookAhead = 3.5f; public int giftNudgeMinCoins = 100;
+            public float zoomSec = 3f, breathAmp = 1f, breathPeriodSec = 24f, maxFocusSpeed = 2.5f, maxZoomSpeed = 1.2f;
         }
 
-        [Serializable] public class Board { public float distanceBehind = 0.3f, height = 1.0f, scale = 1f; public int rows = 6; }
+        [Serializable] public class Board { public int rows = 10; public float screenY = 0.745f, heightFrac = 0.255f, depth = 30f, tiltDeg = 10f; public float distanceBehind = 0.3f, height = 1f, scale = 1f; }
+        [Serializable] public class Levels { public int likesL1 = 20, commentsL1 = 3, likesL2 = 100, commentsL2 = 10, likesL3 = 300, commentsL3 = 25; public int[] giftCoins = { 1, 30, 300, 1000, 5000 }; }
+        [Serializable] public class Emotes { public float cooldownSec = 4f, showSec = 1.7f; public int maxActive = 14; }
         [Serializable] public class Vigor { public float maxBulk = 1.22f, minBulk = 0.8f, fullForSec = 30, thinAfterSec = 150; }
         [Serializable] public class Bridge { public string url = "ws://127.0.0.1:8788/game"; public float reconnectSec = 2; }
         [Serializable] public class Dev { public int trafficViewers = 60; public float trafficEventsPerSec = 6; }
@@ -145,6 +156,8 @@ namespace Arena
         public CameraCfg camera = new CameraCfg();
         public Board board = new Board();
         public Vigor vigor = new Vigor();
+        public Levels levels = new Levels();
+        public Emotes emotes = new Emotes();
         public Bridge bridge = new Bridge();
         public Dev dev = new Dev();
 
@@ -203,13 +216,14 @@ namespace Arena
         {
             return new[]
             {
-                new GiftTier { minCoins = 1, move = "PowerPunch", label = "Yumruk" },
-                new GiftTier { minCoins = 5, move = "Bat", label = "Sopa" },
-                new GiftTier { minCoins = 30, move = "Shovel", label = "Kürek" },
-                new GiftTier { minCoins = 100, move = "SpinKick", label = "Döner Tekme" },
-                new GiftTier { minCoins = 300, move = "Shockwave", label = "Dalga" },
-                new GiftTier { minCoins = 1000, move = "Giant", label = "Dev" },
-                new GiftTier { minCoins = 5000, move = "Tornado", label = "Tornado" },
+                new GiftTier { minCoins = 1, move = "PowerPunch", label = "PUNCH" },
+                new GiftTier { minCoins = 5, move = "Bat", label = "BAT" },
+                new GiftTier { minCoins = 30, move = "Shovel", label = "SHOVEL" },
+                new GiftTier { minCoins = 100, move = "SpinKick", label = "SPIN KICK" },
+                new GiftTier { minCoins = 300, move = "Shockwave", label = "WAVE" },
+                new GiftTier { minCoins = 1000, move = "Giant", label = "GIANT" },
+                new GiftTier { minCoins = 2500, move = "Thunder", label = "THUNDER" },
+                new GiftTier { minCoins = 5000, move = "Tornado", label = "TORNADO" },
             };
         }
     }

@@ -6,7 +6,8 @@
     "inactiveAfterSec": 120,
     "giftProtectionSec": 300,
     "evictActivityWindowSec": 120,
-    "queueMax": 300
+    "queueMax": 300,
+    "reentryByCommentUntilFinal": true
   },
   "intelligence": {
     "fullUntilSec": 45,
@@ -43,7 +44,7 @@
   },
   "death": {
     "lieSec": 2,
-    "penaltySec": 40,
+    "penaltySec": 3,
     "reviveMinHp": 500
   },
   "bots": {
@@ -72,7 +73,26 @@
     "launchBackSpeed": 7.0,
     "gravity": 20,
     "wallBounce": 0.6,
-    "superHitFlyDamage": 50
+    "superHitFlyDamage": 50,
+    "poiseDecayPerSec": 55,
+    "staggerImpact": 28,
+    "knockdownPoise": 95,
+    "launchPoise": 135,
+    "launchMinBack": 3,
+    "launchMaxBack": 9,
+    "launchMinUp": 2.5,
+    "launchMaxUp": 7,
+    "sideSpreadDeg": 35,
+    "forcePunch": 1.0,
+    "forceKick": 1.3,
+    "forceBat": 1.4,
+    "forceShovel": 1.3,
+    "forcePower": 1.7,
+    "forceSpin": 1.4,
+    "forceWave": 1.5,
+    "forceTornado": 1.25,
+    "forceThunder": 1.4,
+    "giantForceMul": 1.4
   },
   "moves": {
     "powerPunch": {
@@ -115,102 +135,149 @@
       "damage": 40,
       "radius": 1.8,
       "speed": 3.2,
-      "fling": 6.0
+      "fling": 6.0,
+      "spinDegPerSec": 1440,
+      "pull": 2.5
     },
     "stackMaxSec": 60,
     "queueMax": 3,
-    "powerPoseSec": 0.5
+    "powerPoseSec": 0.5,
+    "thunder": {
+      "strikes": 6,
+      "intervalSec": 0.45,
+      "damage": 110,
+      "radius": 1.8
+    }
   },
   "gifts": {
     "tiers": [
       {
         "minCoins": 1,
         "move": "PowerPunch",
-        "label": "Yumruk"
+        "label": "PUNCH",
+        "icon": ""
       },
       {
         "minCoins": 5,
         "move": "Bat",
-        "label": "Sopa"
+        "label": "BAT",
+        "icon": ""
       },
       {
         "minCoins": 30,
         "move": "Shovel",
-        "label": "Kürek"
+        "label": "SHOVEL",
+        "icon": ""
       },
       {
         "minCoins": 100,
         "move": "SpinKick",
-        "label": "Döner Tekme"
+        "label": "SPIN KICK",
+        "icon": ""
       },
       {
         "minCoins": 300,
         "move": "Shockwave",
-        "label": "Dalga"
+        "label": "WAVE",
+        "icon": ""
       },
       {
         "minCoins": 1000,
         "move": "Giant",
-        "label": "Dev"
+        "label": "GIANT",
+        "icon": ""
+      },
+      {
+        "minCoins": 2500,
+        "move": "Thunder",
+        "label": "THUNDER",
+        "icon": ""
       },
       {
         "minCoins": 5000,
         "move": "Tornado",
-        "label": "Tornado"
+        "label": "TORNADO",
+        "icon": ""
       }
     ],
     "catalog": [
       {
         "name": "Rose",
-        "coins": 1
+        "coins": 1,
+        "move": "",
+        "power": 0
       },
       {
         "name": "TikTok",
-        "coins": 1
+        "coins": 1,
+        "move": "",
+        "power": 0
       },
       {
         "name": "GG",
-        "coins": 1
+        "coins": 1,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Ice Cream Cone",
-        "coins": 1
+        "coins": 1,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Heart Me",
-        "coins": 1
+        "coins": 1,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Finger Heart",
-        "coins": 5
+        "coins": 5,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Doughnut",
-        "coins": 30
+        "coins": 30,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Hand Hearts",
-        "coins": 100
+        "coins": 100,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Corgi",
-        "coins": 299
+        "coins": 299,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Money Gun",
-        "coins": 500
+        "coins": 500,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Galaxy",
-        "coins": 1000
+        "coins": 1000,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Lion",
-        "coins": 29999
+        "coins": 29999,
+        "move": "",
+        "power": 0
       },
       {
         "name": "Universe",
-        "coins": 44999
+        "coins": 44999,
+        "move": "",
+        "power": 0
       }
     ],
     "goldUnlockTotalCoins": 1000
@@ -234,14 +301,14 @@
     "tauntWindowSec": 2.0
   },
   "round": {
-    "prepSec": 10,
+    "prepSec": 15,
     "entriesPerSec": 5,
     "prepRecentSec": 120,
     "finalAfterSec": 180,
     "finalAtAlive": 10,
-    "ringStartRadius": 12,
-    "ringEndRadius": 4,
-    "ringShrinkSec": 60,
+    "ringStartRadius": 11.6,
+    "ringEndRadius": 6.5,
+    "ringShrinkSec": 75,
     "ringDps": 30,
     "winnerSec": 8,
     "maxRoundSec": 330
@@ -265,15 +332,20 @@
     "pitchDeg": 42,
     "yawDeg": 45,
     "fov": 45,
-    "minDistance": 23,
-    "maxDistance": 29,
+    "minDistance": 16.5,
+    "maxDistance": 21.5,
     "spreadForMax": 7,
     "followSec": 1.5,
-    "maxOffsetFromCenter": 5,
+    "maxOffsetFromCenter": 6,
     "giftNudgeWeight": 6,
     "giftNudgeMinCoins": 100,
-    "lookAhead": 2.6,
-    "maxOffsetForward": 2
+    "lookAhead": 3.5,
+    "maxOffsetForward": 3,
+    "zoomSec": 3,
+    "breathAmp": 1.0,
+    "breathPeriodSec": 24,
+    "maxFocusSpeed": 2.5,
+    "maxZoomSpeed": 1.2
   },
   "vigor": {
     "maxBulk": 1.22,
@@ -290,9 +362,30 @@
     "trafficEventsPerSec": 6
   },
   "board": {
-    "distanceBehind": 0.3,
-    "height": 1.0,
-    "scale": 1.0,
-    "rows": 6
+    "rows": 10,
+    "screenY": 0.745,
+    "heightFrac": 0.255,
+    "depth": 30,
+    "tiltDeg": 10
+  },
+  "levels": {
+    "likesL1": 20,
+    "commentsL1": 3,
+    "likesL2": 100,
+    "commentsL2": 10,
+    "likesL3": 300,
+    "commentsL3": 25,
+    "giftCoins": [
+      1,
+      30,
+      300,
+      1000,
+      5000
+    ]
+  },
+  "emotes": {
+    "cooldownSec": 4,
+    "showSec": 1.7,
+    "maxActive": 10
   }
 }

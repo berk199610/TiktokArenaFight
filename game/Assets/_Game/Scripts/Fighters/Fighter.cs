@@ -16,6 +16,7 @@ namespace Arena
         public float up;         // upward launch speed (Launch)
         public bool strong;      // hit stop (doc §6.2)
         public MoveKind move;    // which gift move caused it (None for basic attacks)
+        public float force;      // how hard (punch 1, kick 1.3, power fist 1.7 ...); reaction = damage x force x vulnerability
     }
 
     /// <summary>
@@ -70,11 +71,24 @@ namespace Arena
         float nextStarAt, nextSweatAt;
         Vector3 entryTarget;
         public float hurtFlashUntil;
+        public float poise;              // stacked impact: decides stagger / knockdown / flight (user request)
+        float poiseAt;
+        public float emoteCooldownUntil;
+        public float lastEmoteHelpAt = -99f;
+        public readonly System.Collections.Generic.List<GameObject> gearParts = new System.Collections.Generic.List<GameObject>();
+        public int gearSupport = -1, gearGift = -1;
 
         static GameConfig Cfg => GameConfig.Current;
         public Vector3 Pos => motor.pos;
         public float Hp01 => hp / Cfg.health.max;
         public bool IsAlive => active && state != FState.Dead && state != FState.Ejected;
+        public const int Layer = 8;
+
+        /// <summary>Put a new part of this character (gear, weapon) on the fighters layer.</summary>
+        public static void Layerize(GameObject go)
+        {
+            foreach (var t in go.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = Layer;
+        }
         public bool IsTargetable => IsAlive && state != FState.Airborne && state != FState.Down && state != FState.GettingUp && state != FState.Entering;
         public bool IsBot => viewer != null && viewer.isBot;
         public string Name => viewer != null ? viewer.DisplayName : name;
@@ -114,6 +128,7 @@ namespace Arena
             lastHitBy = null; lastHitTime = -99f; targetedBy = 0;
             knockedSomeoneAt = -99f; wokeAt = -99f;
             weapon = MoveKind.None; powerPunchCharges = 0; giant = false; sizeMul = sizeTarget = 1f; spinSpeed = 0; superArmor = false;
+            poise = 0f; poiseAt = now; emoteCooldownUntil = now + 2f;
             spawnedAt = now;
             nameVisibleUntil = now + Cfg.names.showSec;
             // per-character variety (doc §5.3): speed ±10 %, reaction, animation speed
@@ -132,6 +147,7 @@ namespace Arena
             SetGifterLook(false, false);
             if (rig.crown) rig.crown.gameObject.SetActive(false);
             Accessories.SetGold(rig, v.record != null && v.record.goldUnlocked);
+            Gear.Apply(this, false);
             entryTarget = runTo;
             state = FState.Entering;
             stateUntil = now + 2.2f;
@@ -169,8 +185,12 @@ namespace Arena
                 case FState.Taunting:
                 case FState.Dodging:
                 case FState.Waking:
-                case FState.Dizzy:
                     motor.Stop();
+                    if (now >= stateUntil) ToIdle();
+                    break;
+                case FState.Dizzy:
+                    // wobbles around slowly instead of standing frozen
+                    motor.Move(new Vector3(Mathf.Sin(now * 1.7f + uid), 0, Mathf.Cos(now * 1.3f + uid * 2f)), 0.45f);
                     if (now >= stateUntil) ToIdle();
                     break;
                 case FState.Down:
@@ -294,48 +314,106 @@ namespace Arena
         {
             if (!IsAlive) return;
             float now = Time.time;
+            var cc = Cfg.combat;
             float dmg = h.damage * (inactive ? Cfg.health.inactiveDamageTakenMul : 1f);
             hp -= dmg;
             hurtFlashUntil = now + 0.12f;
             if (h.attacker != null && h.attacker != this) { lastHitBy = h.attacker; lastHitTime = now; }
             nameVisibleUntil = now + Cfg.names.showSec;
-            if (h.strong && h.attacker != null) { anim.HitStop(Cfg.combat.hitStopSec); h.attacker.anim.HitStop(Cfg.combat.hitStopSec); }
+            if (h.strong && h.attacker != null) { anim.HitStop(cc.hitStopSec); h.attacker.anim.HitStop(cc.hitStopSec); }
+
+            // force -> impact; it stacks (poise) and slowly fades, so a single jab never throws anyone
+            poise = Mathf.Max(0f, poise - (now - poiseAt) * cc.poiseDecayPerSec);
+            poiseAt = now;
+            float force = h.force > 0f ? h.force : 1f;
+            if (h.attacker != null && h.attacker.giant) force *= cc.giantForceMul;
+            float vuln = 1f + (1f - Mathf.Clamp01(hp / Cfg.health.max)) * 0.8f + (inactive ? 0.3f : 0f);
+            float impact = h.damage * force * vuln;
+            poise += impact;
+            // a little left / right spread so people fall to the sides too
+            var dir = h.dir; dir.y = 0;
+            if (dir.sqrMagnitude < 0.001f) dir = -transform.forward;
+            dir = Quaternion.Euler(0, Random.Range(-cc.sideSpreadDeg, cc.sideSpreadDeg), 0) * dir.normalized;
 
             if (hp <= 0f)
             {
                 hp = 0f;
-                if (h.kind == HitKind.Launch) Launch(h.dir, h.push, h.up);
-                Die(h.attacker, h.move);
+                DieFrom(h, dir, Mathf.Max(impact, poise));
                 return;
             }
 
-            // giants and body-controlling moves only flinch
             bool armored = giant || superArmor || (specials.Current != null && specials.Current.ControlsBody);
-            var kind = h.kind;
-            if (armored) kind = HitKind.Light;
-            else if (kind == HitKind.Heavy && hp < Cfg.health.veryLowHp && Random.value < Cfg.health.veryLowKnockdownChance) kind = HitKind.Knockdown;
-
-            switch (kind)
+            if (armored)
             {
-                case HitKind.Light:
-                    anim.PlayHit(Random.value < 0.5f);
-                    if (!giant) motor.AddPush(h.dir * Cfg.combat.lightPush);
-                    break;
-                case HitKind.Heavy:
-                    combat.Cancel();
-                    state = FState.Staggered;
-                    stateUntil = now + Cfg.combat.heavyStaggerSec;
-                    anim.Play(FighterAnimation.HitBig, 0.05f);
-                    motor.AddPush(h.dir * h.push);
-                    break;
-                case HitKind.Knockdown:
-                    Knockdown(h.dir, h.push * 0.5f);
-                    break;
-                case HitKind.Launch:
-                    Launch(h.dir, h.push, h.up);
-                    break;
+                anim.PlayHit(Random.value < 0.5f);
+                return;
+            }
+
+            float big = Mathf.Max(impact, poise);
+            if (big >= cc.launchPoise)
+            {
+                float t = Mathf.Clamp01((big - cc.launchPoise) / 150f);
+                poise = 0f;
+                Launch(dir, Mathf.Lerp(cc.launchMinBack, cc.launchMaxBack, t), Mathf.Lerp(cc.launchMinUp, cc.launchMaxUp, t));
+                if (Random.value < 0.4f) GameManager.I.Emotes?.Show(this, hp < Cfg.health.lowHp ? "scared" : "dizzy");
+            }
+            else if (poise >= cc.knockdownPoise || (hp < Cfg.health.veryLowHp && impact >= cc.staggerImpact && Random.value < Cfg.health.veryLowKnockdownChance))
+            {
+                poise *= 0.3f;
+                Knockdown(dir, 1.5f + impact / 30f);
+            }
+            else if (impact >= cc.staggerImpact)
+            {
+                combat.Cancel();
+                state = FState.Staggered;
+                stateUntil = now + cc.heavyStaggerSec;
+                // stumble the way the hit pushes: back, left or right
+                var local = Quaternion.Inverse(transform.rotation) * dir;
+                int st = local.z < -0.45f ? FighterAnimation.HitBig : local.x > 0f ? FighterAnimation.StaggerR : FighterAnimation.StaggerL;
+                anim.Play(st, 0.05f);
+                motor.AddPush(dir * (h.push * 0.5f + impact / 22f));
+                if (Random.value < 0.25f) GameManager.I.Emotes?.Show(this, hp < Cfg.health.lowHp ? "scared" : "angry");
+            }
+            else
+            {
+                anim.PlayHit(Random.value < 0.5f);
+                motor.AddPush(dir * (cc.lightPush + impact / 40f));
+                if (impact > 12f && Random.value < 0.06f) GameManager.I.Emotes?.Show(this, "angry");
+            }
+            if (hp < Cfg.health.lowHp && now - lastEmoteHelpAt > 9f && Random.value < 0.3f)
+            {
+                lastEmoteHelpAt = now;
+                GameManager.I.Emotes?.Show(this, "sos", true);
             }
         }
+
+        /// <summary>Killing blow: a big hit throws the body, otherwise one of several death falls.</summary>
+        void DieFrom(in HitInfo h, Vector3 dir, float impact)
+        {
+            var cc = Cfg.combat;
+            if (impact >= cc.launchPoise * 0.8f && !giant)
+            {
+                float t = Mathf.Clamp01((impact - cc.launchPoise * 0.8f) / 150f);
+                Launch(dir, Mathf.Lerp(cc.launchMinBack, cc.launchMaxBack, t), Mathf.Lerp(cc.launchMinUp, cc.launchMaxUp, t) + 1f);
+                spinSpeed = Random.Range(-300f, 300f);
+            }
+            else
+            {
+                var local = Quaternion.Inverse(transform.rotation) * dir;
+                int d;
+                float r = Random.value;
+                if (local.z > 0.4f) d = FighterAnimation.DeathFwd;              // hit from behind: falls on the face
+                else if (Mathf.Abs(local.x) > 0.55f) d = FighterAnimation.DeathSide;
+                else d = r < 0.45f ? FighterAnimation.Death : r < 0.75f ? FighterAnimation.DeathKnees : FighterAnimation.DeathFwd;
+                deathAnim = d;
+                motor.AddPush(dir * (1f + impact / 40f));
+            }
+            Die(h.attacker, h.move);
+            if (h.attacker != null && (h.attacker.IsGifter || impact > cc.knockdownPoise || Random.value < 0.25f))
+                Fx.I.Impact(transform.position + Vector3.up * 1.4f, ImpactStyle.KO);
+        }
+
+        int deathAnim = -1;
 
         public void Knockdown(Vector3 dir, float push)
         {
@@ -343,11 +421,13 @@ namespace Arena
             combat.Cancel();
             state = FState.Down;
             stateUntil = Time.time + 0.5f + Cfg.combat.knockdownSec;
-            anim.Play(FighterAnimation.Fall, 0.05f);
+            var local = Quaternion.Inverse(transform.rotation) * dir;
+            int fall = Mathf.Abs(local.x) > 0.5f ? (local.x > 0 ? FighterAnimation.FallR : FighterAnimation.FallL) : FighterAnimation.Fall;
+            anim.Play(fall, 0.05f);
             motor.AddPush(dir * push);
         }
 
-        /// <summary>Super hits throw the character backwards through the air (user request): fly, land, lie, get up.</summary>
+        /// <summary>Strong hits throw the character backwards through the air: fly, land, lie, get up.</summary>
         public void Launch(Vector3 dir, float back, float up)
         {
             if (!active || giant) return;
@@ -358,13 +438,15 @@ namespace Arena
             dir.Normalize();
             motor.Launch(dir * back + Vector3.up * up);
             anim.Play(FighterAnimation.Fall, 0.05f);
-            // face the attacker while flying backwards
+            // face the attacker while flying backwards, tumbling a little
             motor.SnapYaw(Quaternion.LookRotation(-dir).eulerAngles.y);
+            spinSpeed = Random.Range(-160f, 160f);
         }
 
         public void OnLanded()
         {
             Fx.I.Dust(Pos, 8, 1.8f);
+            spinSpeed = 0f;
             if (state == FState.Airborne)
             {
                 state = FState.Down;
@@ -393,7 +475,8 @@ namespace Arena
             specials.Clear();
             DropWeapon();
             giant = false; sizeTarget = 1f; spinSpeed = 0;
-            if (!flying) anim.Play(FighterAnimation.Death, 0.08f);
+            if (!flying) anim.Play(deathAnim >= 0 ? deathAnim : FighterAnimation.Death, 0.08f);
+            deathAnim = -1;
             if (rig.crown) rig.crown.gameObject.SetActive(false);
             if (killer != null && killer != this) killer.knockedSomeoneAt = Time.time;
             GameManager.I.OnFighterKilled(this, killer, move);
@@ -425,6 +508,7 @@ namespace Arena
             motor.Stop();
             anim.Play(FighterAnimation.Dance, 0.15f);
             if (rig.crown) rig.crown.gameObject.SetActive(true);
+            GameManager.I.Emotes?.Show(this, "cool", true);
         }
 
         // ------------------------------------------------------------------ weapons
@@ -433,6 +517,7 @@ namespace Arena
             DropWeapon();
             weapon = kind;
             weaponObj = Accessories.BuildWeapon(kind, rig, body);
+            if (weaponObj != null) Layerize(weaponObj.gameObject);
         }
 
         public void DropWeapon()

@@ -175,6 +175,7 @@ namespace Arena
             f.aura = Fx.AttachedGlow(go.transform, new Color(1f, 0.8f, 0.2f, 0.75f), 0.9f);
             f.aura.enabled = false;
 
+            Fighter.Layerize(go);
             f.Setup(nextUid++, c, body, modelGo.transform, animator, rig, scale);
             go.SetActive(false);
             return f;

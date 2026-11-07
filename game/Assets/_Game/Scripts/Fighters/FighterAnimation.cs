@@ -17,6 +17,8 @@ namespace Arena
         public static readonly int Flex = H("Flex"), HitBig = H("HitBig"), Fall = H("Fall"), Lying = H("Lying"), GetUp = H("GetUp"), Death = H("Death");
         public static readonly int Dizzy = H("Dizzy"), Dance = H("Dance"), Yes = H("Yes"), Wake = H("Wake"), Dodge = H("Dodge"), Air = H("Air"), Guard = H("Guard");
         public static readonly int HitHead = H("HitHead"), HitChest = H("HitChest");
+        public static readonly int StaggerL = H("StaggerL"), StaggerR = H("StaggerR"), FallL = H("FallL"), FallR = H("FallR");
+        public static readonly int DeathFwd = H("DeathFwd"), DeathSide = H("DeathSide"), DeathKnees = H("DeathKnees"), Cocky = H("Cocky");
 
         // state -> (clip, state speed) — must match ArenaSetup.CreateAnimator
         static readonly Dictionary<int, (string clip, float speed)> stateClips = new Dictionary<int, (string, float)>
@@ -25,6 +27,7 @@ namespace Arena
             { Bat, ("Sword_Regular_A", 1.1f) }, { Shovel, ("Sword_Regular_B", 1f) }, { Slam, ("Slam", 1f) }, { Flex, ("Flex", 1f) },
             { HitBig, ("Hit_Knockback", 1.2f) }, { GetUp, ("LayToIdle", 1.3f) }, { Death, ("Death01", 1f) }, { Wake, ("Idle_No_Loop", 1.4f) },
             { Dodge, ("Roll", 1.3f) }, { Yes, ("Yes", 1f) }, { Fall, ("Fall", 1f) },
+            { StaggerL, ("StaggerL", 1f) }, { StaggerR, ("StaggerR", 1f) }, { FallL, ("FallL", 1f) }, { FallR, ("FallR", 1f) },
         };
         static Dictionary<string, float> clipLengths;
 

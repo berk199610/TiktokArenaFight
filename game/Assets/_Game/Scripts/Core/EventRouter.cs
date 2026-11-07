@@ -5,7 +5,7 @@ namespace Arena
     /// <summary>
     /// Every incoming viewer event (TikTok bridge, simulator, DevKeys) goes through here and is dispatched to the
     /// right systems (doc §10.3): health (+1 per like, +5 per comment, coins x10 per gift), waking up, entry rules,
-    /// gift moves, persistent totals, event feed.
+    /// gift moves, supporter / gifter levels (gear), persistent totals.
     /// </summary>
     public class EventRouter
     {
@@ -30,6 +30,7 @@ namespace Arena
             var v = registry.GetOrCreate(e.userId, e.nickname, e.avatarUrl);
             var f = v.fighter != null && v.fighter.IsAlive ? v.fighter : null;
             var hc = Cfg.health;
+            var emotes = GameManager.I.Emotes;
 
             switch (kind)
             {
@@ -38,6 +39,7 @@ namespace Arena
                 case ViewerEventType.Share:
                 {
                     v.NoteInteraction(now);
+                    v.streamComments++;
                     if (kind == ViewerEventType.Comment && v.record != null) v.record.totalComments++;
                     if (f != null)
                     {
@@ -45,8 +47,10 @@ namespace Arena
                         f.Wake(now);
                         f.nameVisibleUntil = now + Cfg.names.showSec;
                         GameManager.I.Names?.Float(f, "+" + Mathf.RoundToInt(hc.commentHp), new Color(0.45f, 1f, 0.5f));
+                        if (Random.value < 0.15f) emotes?.Show(f, "happy");
                     }
                     roster.OnInteraction(v, now);
+                    Gear.CheckLevelUp(v);
                     break;
                 }
                 case ViewerEventType.Like:
@@ -57,6 +61,7 @@ namespace Arena
                     int n = Mathf.Min(Mathf.Max(1, e.count), allowed);
                     if (n <= 0) { v.NoteInteraction(now); return; }
                     v.likesInWindow += n;
+                    v.streamLikes += n;
                     v.NoteInteraction(now);
                     if (v.record != null) v.record.totalLikes += n;
                     if (f != null)
@@ -65,8 +70,11 @@ namespace Arena
                         f.Wake(now);
                         f.nameVisibleUntil = now + Cfg.names.showSec;
                         GameManager.I.Names?.Float(f, "+" + Mathf.RoundToInt(hc.likeHp * n), new Color(0.45f, 1f, 0.5f));
+                        Fx.I.HealSparks(f.Pos, 2);
+                        if (Random.value < (f.hp < hc.lowHp ? 0.25f : 0.05f)) emotes?.Show(f, "love");
                     }
                     roster.OnInteraction(v, now);
+                    Gear.CheckLevelUp(v);
                     break;
                 }
                 case ViewerEventType.Gift:
@@ -93,11 +101,12 @@ namespace Arena
                         float heal = total >= hc.giftFullHpCoins ? hc.max : total * hc.giftHpPerCoin;
                         f.Heal(heal, true);
                         f.Wake(now);
-                        GameManager.I.Names?.Float(f, "+" + Mathf.RoundToInt(Mathf.Min(heal, hc.max - 0f)), new Color(0.45f, 1f, 0.5f));
+                        GameManager.I.Names?.Float(f, "+" + Mathf.RoundToInt(heal), new Color(0.45f, 1f, 0.5f));
                     }
-                    var move = GiftResolver.Resolve(coins);
-                    roster.OnGift(v, coins, count, move, now);
+                    var move = GiftResolver.Resolve(coins, e.giftName, out float power);
+                    roster.OnGift(v, coins, count, move, power, e.giftName, now);
                     GameManager.I.OnGift(v, move, total);
+                    Gear.CheckLevelUp(v);
                     break;
                 }
             }

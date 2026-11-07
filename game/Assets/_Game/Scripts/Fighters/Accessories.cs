@@ -148,7 +148,7 @@ namespace Arena
         static Material MatFor(Color c) => c.a < 0.99f ? Mats.Fx(false, Texture2D.whiteTexture, c) : Mats.Lit(c);
 
         /// <summary>Holder placed in body space, then re-parented to a bone (keeps the pose).</summary>
-        static Transform Holder(string name, Transform body, Vector3 bodyPos, Transform bone)
+        public static Transform Holder(string name, Transform body, Vector3 bodyPos, Transform bone)
         {
             var h = new GameObject(name).transform;
             h.SetParent(body, false);
