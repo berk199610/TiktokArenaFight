@@ -52,7 +52,7 @@ setInterval(() => { eventsPerSecond = eventsThisSecond; eventsThisSecond = 0; br
 
 const sim = new Simulator(emitEvent);
 const tiktok = new TikTokProvider(emitEvent, log, path.join(root, 'data'));
-if (provider === 'tiktok' && cfg.tiktokUsername) tiktok.start(cfg.tiktokUsername);
+if (provider === 'tiktok' && cfg.tiktokUsername) tiktok.start(cfg.tiktokUsername, cfg.signApiKey);
 
 function broadcastStatus() {
   send(panels, statusInfo());
@@ -107,7 +107,7 @@ const server = http.createServer((req, res) => {
     cfg.tiktokUsername = username.replace('https://www.tiktok.com/', '').replace('/live', '').replace('@', '').trim();
     saveConfig();
     sim.handle('viewers', { value: 0 });
-    await tiktok.start(username);
+    await tiktok.start(username, cfg.signApiKey);
     broadcastStatus();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, status: tiktok.status }));
